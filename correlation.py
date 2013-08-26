@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import pyKdV as kdv
 from pyKdV.pseudoSpec1D import conjT, fft2d, ifft2d
+from dataAssLib import *
 
 Ntrc=100
 L=10.
@@ -45,6 +46,7 @@ var=0.2
 Sigma=fSigma(g, var)
 Sigma_inv=fSigma(g, var**-1)
 
-BDemi=np.dot(Sigma, CDemi)
-BDemi_inv=g.N*np.dot(conjT(np.fft.ifft(conjT(tfCDemi_inv))), Sigma_inv)
-
+#BDemi=np.dot(Sigma, CDemi)
+#BDemi_inv=g.N*np.dot(conjT(np.fft.ifft(conjT(tfCDemi_inv))), Sigma_inv)
+BDemi=B_sqrt_isoHomo(g, var*np.ones(g.N), fCorr_isoHomo(g, 1.))
+BDemi_inv=B_sqrt_inv_isoHomo(g, var*np.ones(g.N), fCorr_isoHomo(g, 1.))
