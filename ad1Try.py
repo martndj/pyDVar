@@ -24,8 +24,8 @@ obs=np.dot(H,x_truth)
 #----| Preconditionning |-----
 xi=np.zeros(g.N)
 corr=fCorr_isoHomo(g, 5.)
+rCTilde=spCorr_isoHomo(corr)
 var=0.2*np.ones(g.N)
-B_sqrt=B_sqrt_isoHomo(g, var, corr)
 
 #----| Departure |------------
 Hx=np.dot(H, x_bkg)
@@ -33,11 +33,11 @@ d=Hx-obs
 R_inv=np.eye(len(idxObs))
 
 #----| Minimizing |-----------
-args=(d, R_inv, B_sqrt, H)
-xi_a=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
-                args=args, maxiter=100)
+args=(d, R_inv, B_sqrt_op, H, g.N, var, rCTilde)
+xi_a, out=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
+                args=args, retall=True, maxiter=1000)
 
-x_a=x_bkg+np.dot(B_sqrt, xi_a)
+x_a=x_bkg+B_sqrt_op(xi_a, N, var, rCTilde)
 
 
 plt.plot(g.x, x_truth)
