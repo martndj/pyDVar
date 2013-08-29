@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import pyKdV as kdv
 
 Ng=100
-sig=0.2
+sig=0.1
 # pour sig=0.1 ca colle presque...
 g=kdv.SpectralGrid(Ng, 100., aliasing=1)
 
@@ -34,5 +34,5 @@ CTilde_sqrt=np.sqrt(rCTilde)
 xiTest=B_sqrt_op_T(xDirac, g.N,  variances, CTilde_sqrt)
 xTest=B_sqrt_op(xiTest, g.N, variances, CTilde_sqrt)
 plt.plot(g.x, xTest)
-plt.plot(g.x, fCorr)
+plt.plot(g.x, sig**2*fCorr)
 plt.show()

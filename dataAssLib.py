@@ -49,7 +49,7 @@ def ifft_Adj(x):
     N=len(x)
     xi=np.zeros(N)
     xi=np.fft.fft(x)
-    xi=xi*N
+    xi=xi#*N
     # --- traitement particulier pour le terme a0
     #  clarifier et voir les notes de Pierre
     # et verifier le test d'ajointitude
