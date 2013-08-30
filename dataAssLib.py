@@ -41,7 +41,10 @@ def r2c_Adj(csp):
     rsp=np.zeros(N+1)
     for i in xrange(1, N/2+1):
         rsp[2*i-1]  =csp[i].real
-        rsp[2*i]    =-csp[i].imag
+        #rsp[2*i]    =-csp[i].imag
+        rsp[2*i]    =csp[i].imag
+        # attention, le produit dans l'espace complexe
+        # demande la conjugaison
     rsp[0]=csp[0].real
     return rsp
 
@@ -49,7 +52,7 @@ def ifft_Adj(x):
     N=len(x)
     xi=np.zeros(N)
     xi=np.fft.fft(x)
-    xi=xi#*N
+    #xi=xi*N
     # --- traitement particulier pour le terme a0
     #  clarifier et voir les notes de Pierre
     # et verifier le test d'ajointitude
