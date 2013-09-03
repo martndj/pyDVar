@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import random as rnd
 
 import pyKdV as kdv
 
@@ -60,33 +61,58 @@ def ifft_Adj(x):
 def fCorr_isoHomo(x, sig):
     return kdv.gauss(x, 0., sig)
 
+def rCTilde_sqrt_isoHomo(g, fCorr ):
+    """
+        Construit la matrice CTilde_sqrt isotrope et homogene
+        dans la base 'r'.
 
 
-def B_sqrt_op(xi, N, var, CTilde_sqrt):
+        Comme celle-ci est diagonale, on la representente comme
+        un vecteur (sa diagonale).
+
+        [c_0, c_1.real, c_1.imag, c_2.real, c_2.imag, ...]
+
+        <!> Attention, elle reste un tenseur d'ordre 2,
+            il faudra cependant etre coherent dans l'application
+            des transformations et changement de base (de 'r' a 'c')
+            des operateurs LCL* et non LC...
+            les manipulations qui suivent resultent de cela
+
+    """
+    rFTilde=c2r(np.fft.fft(fCorr))
+
+    rCTilde=np.zeros(g.N)
+    rCTilde[0]=np.abs(rFTilde[0])
+    for i in xrange(1, (g.N-1)/2+1):
+        # rFTilde[idx pairs] contiennent les coefs reels
+        # resultant de c2r.C.(c2r)*
+        rCTilde[2*i-1]=np.abs(rFTilde[2*i-1])
+        rCTilde[2*i]=np.abs(rFTilde[2*i-1])
+    
+    rCTilde_sqrt=np.sqrt(rCTilde)
+    return rCTilde_sqrt
+
+
+
+def B_sqrt_op(xi, N, var, rCTilde_sqrt):
     """
         B_{1/2} operator
 
         var             :   1D array of variances
                             (diagonal os Sigma matrix)
-        CTilde_sqrt     :   1D array of the diagonal
-                            of CTilde_sqrt
+        rCTilde_sqrt    :   1D array of the diagonal
+                            of CTilde_sqrt (in 'r' basis)
     """
-    #rCTilde=c2r(CTilde_sqrt)
-    rCTilde=CTilde_sqrt
-
-    xiR=rCTilde*xi              #   1
+    xiR=rCTilde_sqrt*xi              #   1
     xiC=r2c(xiR)                #   2
     x1=np.fft.ifft(xiC).real    #   3
     return x1*var               #   4
 
-def B_sqrt_op_T(x, N,  var, CTilde_sqrt):
-    #rCTilde=c2r(CTilde_sqrt)
-    rCTilde=CTilde_sqrt
-
+def B_sqrt_op_T(x, N,  var, rCTilde_sqrt):
     x1=x*var                    #   4.T
     xiC=ifft_Adj(x1)        #   3.T
     xiR=r2c_Adj(xiC)            #   2.T
-    return rCTilde*xiR      #   1.T
+    return rCTilde_sqrt*xiR      #   1.T
 
 #----| Observations |---------------------------------------
 
@@ -116,11 +142,17 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
 
 #----| Cost function |--------------------------------------
 
-def costFunc(xi, d, R_inv, B_sqrt_op, H, N, var, rCTilde):
+def costFunc(xi, d, R_inv, B_sqrt_op_T, H, N, var, rCTilde_sqrt):
     J_xi=np.dot(xi, xi).real
     J_o=0.5*np.dot(d,np.dot(R_inv,d))
     return J_xi+J_o
 
-def gradCostFunc(xi, d, R_inv, B_sqrt_op, H, N, var, rCTilde):
-    return xi+B_sqrt_op_T(np.dot(H.T,np.dot(R_inv, d)), N, var, rCTilde )
+def gradCostFunc(xi, d, R_inv, B_sqrt_op_T, H, N, var, rCTilde_sqrt):
+    return xi+B_sqrt_op_T(
+                            np.dot(H.T,np.dot(R_inv, d)), 
+                            N, var, rCTilde_sqrt )
 
+
+def gradTest():
+    pass
+    
