@@ -61,7 +61,7 @@ def ifft_Adj(x):
 def fCorr_isoHomo(x, sig):
     return kdv.gauss(x, 0., sig)
 
-def rCTilde_sqrt_isoHomo(g, fCorr ):
+def rCTilde_sqrt_isoHomo(g, fCorr):
     """
         Construit la matrice CTilde_sqrt isotrope et homogene
         dans la base 'r'.
@@ -79,13 +79,16 @@ def rCTilde_sqrt_isoHomo(g, fCorr ):
             les manipulations qui suivent resultent de cela
 
     """
-    rFTilde=c2r(np.fft.fft(fCorr))
+    rFTilde=g.N*c2r(np.fft.fft(fCorr))
 
     rCTilde=np.zeros(g.N)
     rCTilde[0]=np.abs(rFTilde[0])
     for i in xrange(1, (g.N-1)/2+1):
         # rFTilde[idx pairs] contiennent les coefs reels
         # resultant de c2r.C.(c2r)*
+        # (meme si on l'ecrit comme un vecteur, il s'agit de la diagonale
+        #   d'une matrice - un tenseur d'ordre 2, donc il faut appliquer
+        #   les operateurs de chaque cote)
         rCTilde[2*i-1]=np.abs(rFTilde[2*i-1])
         rCTilde[2*i]=np.abs(rFTilde[2*i-1])
     

@@ -13,22 +13,7 @@ sig=1.
 lCorr=5.
 variances=sig*np.ones(g.N)
 fCorr=fCorr_isoHomo(g.x, lCorr)
-rFTilde=g.N*c2r(np.fft.fft(fCorr))
-
-# Attention, C est une matrice, un tenseur d'ordre 2,
-# mais on l'ecrit comme un vecteur
-# il faudra cependant etre coherent dans l'application
-# des operateurs LCL* et non LC...
-# les manipulations qui suivent resultent de cela
-rCTilde=np.zeros(g.N)
-rCTilde[0]=np.abs(rFTilde[0])
-for i in xrange(1, (g.N-1)/2+1):
-    # rFTilde[idx pairs] contiennent les coefs reels
-    rCTilde[2*i-1]=np.abs(rFTilde[2*i-1])
-    rCTilde[2*i]=np.abs(rFTilde[2*i-1])
-
-
-CTilde_sqrt=np.sqrt(rCTilde)
+CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
 
 # correlation test
 xDirac=np.zeros(g.N)
