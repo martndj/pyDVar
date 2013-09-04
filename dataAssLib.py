@@ -119,6 +119,9 @@ def B_sqrt_op_T(x, N,  var, rCTilde_sqrt):
 
 #----| Observations |---------------------------------------
 
+def departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt):
+    x=B_sqrt_op(xi, N, var, rCTilde_sqrt)
+    return np.dot(H, x)-obs
 
 def opObs_exactIdx(N, idxObs):
     """
@@ -145,17 +148,43 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
 
 #----| Cost function |--------------------------------------
 
-def costFunc(xi, d, R_inv, B_sqrt_op_T, H, N, var, rCTilde_sqrt):
-    J_xi=np.dot(xi, xi).real
+def costFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+                H, obs, R_inv, rCTilde_sqrt):
+
+    J_xi=0.5*np.dot(xi, xi).real
+    d=departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
     J_o=0.5*np.dot(d,np.dot(R_inv,d))
     return J_xi+J_o
 
-def gradCostFunc(xi, d, R_inv, B_sqrt_op_T, H, N, var, rCTilde_sqrt):
+def gradCostFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+                    H, obs, R_inv, rCTilde_sqrt):
+
+    d=departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
     return xi+B_sqrt_op_T(
                             np.dot(H.T,np.dot(R_inv, d)), 
                             N, var, rCTilde_sqrt )
 
 
-def gradTest():
-    pass
+def gradTest(costFunc, gradCostFunc, xi, N, var, B_sqrt_op, B_sqrt_op_T,
+                H, obs, R_inv, rCTilde_sqrt, verbose=False):
+    
+    maxPow=-10
+    J0=costFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+                H, obs, R_inv, rCTilde_sqrt)
+    gradJ0=gradCostFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+                        H, obs, R_inv, rCTilde_sqrt)
+    result={}
+    for power in xrange(-1, maxPow, -1):
+        eps=10.**(power)
+        Jeps=costFunc(xi-eps*gradJ0, N, var, B_sqrt_op, B_sqrt_op_T,
+                        H, obs, R_inv, rCTilde_sqrt)
+
+        res=((J0-Jeps)/(eps*np.dot(gradJ0, gradJ0)))
+        result[power]=res
+
+        if verbose : print(power, result[power])
+
+    return result
+
+    
     
