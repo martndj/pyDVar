@@ -58,8 +58,8 @@ def ifft_Adj(x):
 
 #----| Correlations |---------------------------------------
 
-def fCorr_isoHomo(x, sig):
-    return kdv.gauss(x, 0., sig)
+def fCorr_isoHomo(g, sig):
+    return kdv.gauss(g.x, 0., sig)
 
 def rCTilde_sqrt_isoHomo(g, fCorr):
     """
@@ -97,7 +97,7 @@ def rCTilde_sqrt_isoHomo(g, fCorr):
 
 
 
-def B_sqrt_op(xi, N, var, rCTilde_sqrt):
+def B_sqrt_op(xi, var, rCTilde_sqrt):
     """
         B_{1/2} operator
 
@@ -111,7 +111,7 @@ def B_sqrt_op(xi, N, var, rCTilde_sqrt):
     x1=np.fft.ifft(xiC).real    #   3
     return x1*var               #   4
 
-def B_sqrt_op_T(x, N,  var, rCTilde_sqrt):
+def B_sqrt_op_T(x, var, rCTilde_sqrt):
     x1=x*var                    #   4.T
     xiC=ifft_Adj(x1)        #   3.T
     xiR=r2c_Adj(xiC)            #   2.T
@@ -119,49 +119,41 @@ def B_sqrt_op_T(x, N,  var, rCTilde_sqrt):
 
 #----| Observations |---------------------------------------
 
-def departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt):
-    x=B_sqrt_op(xi, N, var, rCTilde_sqrt)+x_b
-    return np.dot(H, x)-obs
+def departure(xi, x_b, var, B_sqrt_op, H, argsH, obs, rCTilde_sqrt):
+    x=B_sqrt_op(xi, var, rCTilde_sqrt)+x_b
+    Hx=H(x, *argsH)
+    return Hx-obs
 
-def opObs_exactIdx(N, idxObs):
-    """
-    s   :   model state
-    idxObs :  shape=(nObs,)
-    """
+def opObs_exactIdx_op(x, g, idxObs):
     nObs=len(idxObs)
-    H=np.zeros(shape=(nObs,N))
+    H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
         H[i, idxObs[i]]=1.
-    return H
+    return np.dot(H,x)
 
-
-#def obsCovar_independant(idxObs, var):
-#    nObs=len(idxObs)
-#    return np.diag(var)
-
-def degrad(signal,mu,sigma,seed=0.7349156729):
-    rnd.seed(seed)
-    signal_degrad=signal.copy()
-    for i in xrange(signal.size):
-        signal_degrad[i]=signal[i]+rnd.gauss(mu, sigma)
-    return signal_degrad
+def opObs_exactIdx_op_T(obs, g, idxObs):
+    nObs=len(idxObs)
+    H=np.zeros(shape=(nObs,g.N))
+    for i in xrange(nObs):
+        H[i, idxObs[i]]=1.
+    return np.dot(H.T,obs)
 
 #----| Cost function |--------------------------------------
 
-def costFunc(xi, x_b, N, var, B_sqrt_op, B_sqrt_op_T,
-                H, obs, R_inv, rCTilde_sqrt):
+def costFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_T,
+                H, H_T, argsH, obs, R_inv, rCTilde_sqrt):
 
     J_xi=0.5*np.dot(xi.T, xi)
-    d=departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
+    d=departure(xi, x_b, var, B_sqrt_op, H, argsH, obs, rCTilde_sqrt)
     J_o=0.5*np.dot(d.T,np.dot(R_inv,d))
     return J_xi+J_o
 
-def gradCostFunc(xi, x_b, N, var, B_sqrt_op, B_sqrt_op_T,
-                    H, obs, R_inv, rCTilde_sqrt):
+def gradCostFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_T,
+                    H, H_T, argsH, obs, R_inv, rCTilde_sqrt):
 
-    d=departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
-    gradJ_o=B_sqrt_op_T(np.dot(H.T,np.dot(R_inv.T, d)), 
-                            N, var, rCTilde_sqrt)
+    d=departure(xi, x_b, var, B_sqrt_op, H,  argsH, obs, rCTilde_sqrt)
+    gradJ_o=B_sqrt_op_T(H_T(np.dot(R_inv.T, d), *argsH), 
+                            var, rCTilde_sqrt)
     return xi+gradJ_o
 
 def gradTest(costFunc, gradCostFunc, xi, *args):
