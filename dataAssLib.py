@@ -119,8 +119,8 @@ def B_sqrt_op_T(x, N,  var, rCTilde_sqrt):
 
 #----| Observations |---------------------------------------
 
-def departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt):
-    x=B_sqrt_op(xi, N, var, rCTilde_sqrt)
+def departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt):
+    x=B_sqrt_op(xi, N, var, rCTilde_sqrt)+x_b
     return np.dot(H, x)-obs
 
 def opObs_exactIdx(N, idxObs):
@@ -135,9 +135,9 @@ def opObs_exactIdx(N, idxObs):
     return H
 
 
-def obsCovar_independant(idxObs, var):
-    nObs=len(idxObs)
-    return np.diag(var)
+#def obsCovar_independant(idxObs, var):
+#    nObs=len(idxObs)
+#    return np.diag(var)
 
 def degrad(signal,mu,sigma,seed=0.7349156729):
     rnd.seed(seed)
@@ -148,43 +148,37 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
 
 #----| Cost function |--------------------------------------
 
-def costFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+def costFunc(xi, x_b, N, var, B_sqrt_op, B_sqrt_op_T,
                 H, obs, R_inv, rCTilde_sqrt):
 
-    J_xi=0.5*np.dot(xi, xi).real
-    d=departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
-    J_o=0.5*np.dot(d,np.dot(R_inv,d))
+    J_xi=0.5*np.dot(xi.T, xi)
+    d=departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
+    J_o=0.5*np.dot(d.T,np.dot(R_inv,d))
     return J_xi+J_o
 
-def gradCostFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
+def gradCostFunc(xi, x_b, N, var, B_sqrt_op, B_sqrt_op_T,
                     H, obs, R_inv, rCTilde_sqrt):
 
-    d=departure(xi, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
-    return xi+B_sqrt_op_T(
-                            np.dot(H.T,np.dot(R_inv, d)), 
-                            N, var, rCTilde_sqrt )
+    d=departure(xi, x_b, N, var, B_sqrt_op, H, obs, rCTilde_sqrt)
+    gradJ_o=B_sqrt_op_T(np.dot(H.T,np.dot(R_inv.T, d)), 
+                            N, var, rCTilde_sqrt)
+    return xi+gradJ_o
 
-
-def gradTest(costFunc, gradCostFunc, xi, N, var, B_sqrt_op, B_sqrt_op_T,
-                H, obs, R_inv, rCTilde_sqrt, verbose=False):
+def gradTest(costFunc, gradCostFunc, xi, *args):
     
-    maxPow=-10
-    J0=costFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
-                H, obs, R_inv, rCTilde_sqrt)
-    gradJ0=gradCostFunc(xi, N, var, B_sqrt_op, B_sqrt_op_T,
-                        H, obs, R_inv, rCTilde_sqrt)
+    maxPow=-14
+    J0=costFunc(xi, *args)
+    gradJ0=gradCostFunc(xi, *args)
     result={}
     for power in xrange(-1, maxPow, -1):
         eps=10.**(power)
-        Jeps=costFunc(xi-eps*gradJ0, N, var, B_sqrt_op, B_sqrt_op_T,
-                        H, obs, R_inv, rCTilde_sqrt)
+        Jeps=costFunc(xi-eps*gradJ0, *args)
+        
+        n2GradJ0=np.dot(gradJ0, gradJ0)
+        res=((J0-Jeps)/(eps*n2GradJ0))
+        result[power]=[Jeps,n2GradJ0, res]
 
-        res=((J0-Jeps)/(eps*np.dot(gradJ0, gradJ0)))
-        result[power]=res
-
+        verbose=True
         if verbose : print(power, result[power])
 
     return result
-
-    
-    

@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 import scipy.optimize as sciOpt
 
 from dataAssLib import *
@@ -15,12 +16,11 @@ x_truth=reality(g.x)
 x_bkg=np.ones(g.N)
 
 #----| Observations |---------
-nObs=10
+nObs=1
 posObs=np.empty(nObs)
 idxObs=np.empty(nObs, dtype=int)
-for i in xrange(nObs):
-    posObs[i]=-L/2.+i*L/nObs
-    idxObs[i]=np.min(np.where(g.x>=posObs[i]))
+posObs[0]=0.
+idxObs[0]=np.min(np.where(g.x>=posObs[0]))
 H=opObs_exactIdx(g.N, idxObs)
 obs=np.dot(H,x_truth)
 sigR=1.
@@ -47,12 +47,18 @@ resultGradTest=gradTest(costFunc, gradCostFunc, xi_a, *args)
 x_a=B_sqrt_op(xi_a, g.N, var, rCTilde_sqrt)+x_bkg
 
 plt.figure()
-plt.plot(g.x, x_truth,'k--')
-plt.plot(g.x, x_bkg,'m')
-#plt.plot(g.x, signal)
-plt.plot(g.x[idxObs], obs, 'go')
-plt.plot(g.x[idxObs], np.dot(H,x_bkg), 'mo')
-plt.plot(g.x, x_a, 'r')
-plt.plot(g.x[idxObs], x_a[idxObs],'ro')
-plt.legend(['$x_t$', '$x_b$', '$y$', r'$H(x)$', r'$x_a$'])
+gs = gridspec.GridSpec(2, 1,height_ratios=[4,1])
+analGrph=plt.subplot(gs[0])
+analGrph.plot(g.x, x_truth,'k--')
+analGrph.plot(g.x, x_bkg,'m')
+analGrph.plot(g.x[idxObs], obs, 'go')
+analGrph.plot(g.x[idxObs], np.dot(H,x_bkg), 'mo')
+analGrph.plot(g.x, x_a, 'r')
+analGrph.plot(g.x[idxObs], x_a[idxObs],'ro')
+analGrph.legend(['$x_t$', '$x_b$', '$y$', r'$H(x)$', r'$x_a$'])
+
+corrGrph=plt.subplot(gs[1])
+corrGrph.plot(g.x, corr)
+corrGrph.legend(['$f(x)$'])
+
 plt.show()    
