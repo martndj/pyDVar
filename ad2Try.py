@@ -34,12 +34,16 @@ rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
 var=sig*np.ones(g.N)
 xi=np.zeros(g.N)
 
-#----| Minimizing |-----------
+
 args=(x_bkg, g.N, var, B_sqrt_op, B_sqrt_op_T, H, obs, R_inv, rCTilde_sqrt)
+#----| Initial Gradient test |
+resultGradTest=gradTest(costFunc, gradCostFunc, xi, *args)
+
+#----| Minimizing |-----------
 xi_a, out=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
                 args=args, retall=True, maxiter=100)
 
-#----| Gradient test |--------
+#----| Final Gradient test |--
 resultGradTest=gradTest(costFunc, gradCostFunc, xi_a, *args)
 
 
