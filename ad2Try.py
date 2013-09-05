@@ -21,24 +21,28 @@ idxObs=np.empty(nObs, dtype=int)
 for i in xrange(nObs):
     posObs[i]=-L/2.+i*L/nObs
     idxObs[i]=np.min(np.where(g.x>=posObs[i]))
-H=opObs_exactIdx(g.N, idxObs)
-obs=np.dot(H,x_truth)
+H=opObs_exactIdx_op
+H_T=opObs_exactIdx_op_T
+argsH=(g, idxObs)
+
+obs=H(x_truth, *argsH)
 sigR=1.
 R_inv=sigR**(-1)*np.eye(len(idxObs))
 
 #----| Preconditionning |-----
 Lc=10.
 sig=1.
-corr=fCorr_isoHomo(g.x, Lc)
+corr=fCorr_isoHomo(g, Lc)
 rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
 var=sig*np.ones(g.N)
 xi=np.zeros(g.N)
 
 
-args=(x_bkg, g.N, var, B_sqrt_op, B_sqrt_op_T, H, obs, R_inv, rCTilde_sqrt)
-#----| Initial Gradient test |
-resultGradTest=gradTest(costFunc, gradCostFunc, xi, *args)
 
+args=(x_bkg, var, B_sqrt_op, B_sqrt_op_T, 
+        H, H_T, argsH, obs, R_inv, rCTilde_sqrt)
+#----| Gradient test |--------
+resultGradTest=gradTest(costFunc, gradCostFunc, xi, *args)
 #----| Minimizing |-----------
 xi_a, out=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
                 args=args, retall=True, maxiter=100)
@@ -48,14 +52,13 @@ resultGradTest=gradTest(costFunc, gradCostFunc, xi_a, *args)
 
 
 #----| Analysis |-------------
-x_a=B_sqrt_op(xi_a, g.N, var, rCTilde_sqrt)+x_bkg
+x_a=B_sqrt_op(xi_a, var, rCTilde_sqrt)+x_bkg
 
 plt.figure()
 plt.plot(g.x, x_truth,'k--')
 plt.plot(g.x, x_bkg,'m')
-#plt.plot(g.x, signal)
 plt.plot(g.x[idxObs], obs, 'go')
-plt.plot(g.x[idxObs], np.dot(H,x_bkg), 'mo')
+plt.plot(g.x[idxObs], H(x_bkg, *argsH), 'mo')
 plt.plot(g.x, x_a, 'r')
 plt.plot(g.x[idxObs], x_a[idxObs],'ro')
 plt.legend(['$x_t$', '$x_b$', '$y$', r'$H(x)$', r'$x_a$'])
