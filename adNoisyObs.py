@@ -13,7 +13,9 @@ x_truth=reality(g.x)
 x_bkg=np.ones(g.N)
 
 #----| Observations |---------
+#   regularly spaced imperfect observations
 nObs=10
+sigR=.2
 posObs=np.empty(nObs)
 idxObs=np.empty(nObs, dtype=int)
 for i in xrange(nObs):
@@ -23,7 +25,6 @@ H=opObs_Idx_op
 H_T=opObs_Idx_op_T
 argsH=(g, idxObs)
 
-sigR=.2
 x_noise=degrad(reality(g.x), 0., sigR)
 obs=H(x_noise, *argsH)
 R_inv=sigR**(-1)*np.eye(len(idxObs))
@@ -36,12 +37,14 @@ rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
 var=sig*np.ones(g.N)
 xi=np.zeros(g.N)
 
+#----| Minimizing |-----------
 da=DataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_T, H, H_T, argsH, obs, 
             R_inv, rCTilde_sqrt)
 
 da.minimize()
 x_a=da.analysis
 
+#----| Post-processing |------
 plt.figure()
 plt.plot(g.x, x_truth,'k--')
 plt.plot(g.x, x_bkg,'m')
