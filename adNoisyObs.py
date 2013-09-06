@@ -25,13 +25,14 @@ H=opObs_Idx_op
 H_T=opObs_Idx_op_T
 argsH=(g, idxObs)
 
-obs=H(x_truth, *argsH)
-sigR=1.
+sigR=.2
+x_noise=degrad(reality(g.x), 0., sigR)
+obs=H(x_noise, *argsH)
 R_inv=sigR**(-1)*np.eye(len(idxObs))
 
 #----| Preconditionning |-----
 Lc=10.
-sig=1.
+sig=0.4
 corr=fCorr_isoHomo(g, Lc)
 rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
 var=sig*np.ones(g.N)
