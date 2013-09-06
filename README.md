@@ -21,7 +21,7 @@ Compiling informations
 ----------------------
 
 ### Python Dependencies
- * pseudoSpec1D (sub module of [pyfKdV](https://github.com/martndj/pyfKdV))
+ * [pseudoSpec1D](https://github.com/martndj/pyfKdV/tree/master/pyKdV/pseudoSpec1D) (sub module of [pyfKdV](https://github.com/martndj/pyfKdV))
  * Numpy
  * Matplotlib
  * Scipy
