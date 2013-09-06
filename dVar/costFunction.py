@@ -33,11 +33,14 @@ def gradTest(costFunc, gradCostFunc, xi, *args):
         res=((J0-Jeps)/(eps*n2GradJ0))
         result[power]=[Jeps,n2GradJ0, res]
 
-        verbose=True
-        if verbose : print(power, result[power])
 
     return result
 
+
+def printGradTest(result):
+    print("----| Gradient test |------------------")
+    for i in  (np.sort(result.keys())[::-1]):
+        print("%4d %+25.15f"%(i, result[i][2]))
 
 if __name__=='__main__':
 
@@ -51,6 +54,6 @@ if __name__=='__main__':
     
     x=np.zeros(3)
     x[0]=1.
-    gradTest(func1, grad, x)
-    gradTest(func2, grad, x)
+    printGradTest(gradTest(func1, grad, x))
+    printGradTest(gradTest(func2, grad, x))
         

@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.optimize as sciOpt
 
 from dVar import *
 
@@ -37,22 +36,11 @@ rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
 var=sig*np.ones(g.N)
 xi=np.zeros(g.N)
 
+da=DataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_T, H, H_T, argsH, obs, 
+            R_inv, rCTilde_sqrt)
 
-
-args=(x_bkg, var, B_sqrt_op, B_sqrt_op_T, 
-        H, H_T, argsH, obs, R_inv, rCTilde_sqrt)
-#----| Gradient test |--------
-resultGradTest=gradTest(costFunc, gradCostFunc, xi, *args)
-#----| Minimizing |-----------
-xi_a, out=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
-                args=args, retall=True, maxiter=100)
-
-#----| Final Gradient test |--
-resultGradTest=gradTest(costFunc, gradCostFunc, xi_a, *args)
-
-
-#----| Analysis |-------------
-x_a=B_sqrt_op(xi_a, var, rCTilde_sqrt)+x_bkg
+da.minimize()
+x_a=da.analysis
 
 plt.figure()
 plt.plot(g.x, x_truth,'k--')
