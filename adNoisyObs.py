@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as sciOpt
 
-from dataAssLib import *
+from dVar import *
 import pyKdV as kdv
 
 Ntrc=100
