@@ -75,7 +75,7 @@ def B_sqrt_op_T(x, var, rCTilde_sqrt):
 if __name__=='__main__':
     import random as rnd
     import matplotlib.pyplot as plt
-    import pyKdV as kdv
+    from pseudoSpec1D import SpectralGrid
     rnd.seed(0.4573216806)
     
     N=11
@@ -106,7 +106,7 @@ if __name__=='__main__':
 
     Ng=100
     # pour sig=0.1 ca colle presque...
-    g=kdv.SpectralGrid(Ng, 100., aliasing=1)
+    g=SpectralGrid(Ng, 100., aliasing=1)
     
     
     sig=1.

@@ -4,14 +4,13 @@ import scipy.optimize as sciOpt
 
 
 from dVar import *
-import pyKdV as kdv
 
 Ntrc=100
 L=100.
-g=kdv.SpectralGrid(Ntrc, L, aliasing=1)
+g=SpectralGrid(Ntrc, L, aliasing=1)
     
 def reality(x):
-    return 1.+0.3*kdv.gauss(x, 5., 8. )-0.4*kdv.gauss(x, -6., 14. )
+    return 1.+0.3*gauss(x, 5., 8. )-0.4*gauss(x, -6., 14. )
 x_truth=reality(g.x)
 x_bkg=np.ones(g.N)
 
