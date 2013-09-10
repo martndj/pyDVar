@@ -17,10 +17,11 @@ x_bkg=np.ones(g.N)
 nObs=10
 sigR=.2
 posObs=np.empty(nObs)
-idxObs=np.empty(nObs, dtype=int)
+#idxObs=np.empty(nObs, dtype=int)
 for i in xrange(nObs):
     posObs[i]=-L/2.+i*L/nObs
-    idxObs[i]=np.min(np.where(g.x>=posObs[i]))
+
+idxObs=pos2Idx(g, posObs)
 H=opObs_Idx_op
 H_T=opObs_Idx_op_T
 argsH=(g, idxObs)

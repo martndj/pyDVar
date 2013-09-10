@@ -1,6 +1,20 @@
 import numpy as np
 import random as rnd
 
+class ObservationOpError(Exception):
+    pass
+
+def pos2Idx(g, pos):
+    if not isinstance(pos, np.ndarray):
+        raise ObservationOpError("pos <numpy.ndarray>")
+    if pos.ndim<>1:
+        raise ObservationOpError("pos.ndim=1")
+    N=len(pos)
+    idx=np.zeros(N, dtype=int)
+    for i in xrange(N):
+        idx[i]=np.min(np.where(g.x>=pos[i]))
+    return idx
+
 def departure(xi, x_b, var, B_sqrt_op, H, argsH, obs, rCTilde_sqrt):
     x=B_sqrt_op(xi, var, rCTilde_sqrt)+x_b
     Hx=H(x, *argsH)
