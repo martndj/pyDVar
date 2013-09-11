@@ -31,7 +31,7 @@ def kd_departure(xi, x_b, var, B_sqrt_op, H, H_TL, argsH, dObs,
     dH_TLx=H_TL(x-x_b, x_b, *argsH)
 
     dDeparture={}
-    for t in dHx.keys():
+    for t in dHx_b.keys():
         dDeparture[t]=dObs[t]-dHx_b[t]-dH_TLx[t]
 
     return dDeparture
@@ -85,7 +85,40 @@ def kd_opObs_TL(dx, x_bkg, g,  dObs, H_op, kdvParam, maxA):
     #----| Model equivalent |-----------
     tInt=np.max(dObs.keys())
     launcher_bkg=kdv.Launcher(kdvParam, x_bkg)
-    traj_bkg=launcher.integrate(tInt)
+    traj_bkg=launcher_bkg.integrate(tInt, maxA)
+    HMdx={}
+    t_pre=0.
+    dx_pre=dx
+    for t in dObs.iterkeys():
+        tLauncher=kdv.TLMLauncher(kdvParam, traj_bkg, dx_pre)
+        dx_t=tLauncher.integrate(tInt=t-t_pre, t0=t_pre)
+        HMdx[t]=H_op(dx_t, g, pos2Idx(g, dObs[t]))
+        t_pre=t
+        dx_pre=dx_t
+    return HMdx
+ 
+#-----------------------------------------------------------
+
+def kd_opObs_TL_nonSequential(dx, x_bkg, g,  dObs, H_op, kdvParam, maxA):
+    """
+        tangent linear observation operator
+
+        dx      :   state increment <numpy.ndarray>
+        x_bkg   :   background state <numpy.ndarray>
+        g       :   <SpectralGrid>
+        dObs    :   {time <float>   :   idxObs <np.array>, ...} <dict>
+        H_op    :   static observation operator
+    """
+    if not (isinstance(dObs, dict)): 
+        raise obsTimeOpError("dObs <dict>")
+    for t in dObs.iterkeys():
+        if not isinstance(dObs[t], np.ndarray):
+            raise obsTimeOpError("dObs[t] <numpy.ndarray>")
+
+    #----| Model equivalent |-----------
+    tInt=np.max(dObs.keys())
+    launcher_bkg=kdv.Launcher(kdvParam, x_bkg)
+    traj_bkg=launcher_bkg.integrate(tInt, maxA)
     HMdx={}
     for t in dObs.iterkeys():
         # parallelize this?
@@ -99,7 +132,7 @@ def kd_opObs_TL(dx, x_bkg, g,  dObs, H_op, kdvParam, maxA):
 #===========================================================
 if __name__=="__main__":
     import matplotlib.pyplot as plt
-    from dVar import opObs_Idx_op, degrad
+    from dVar import opObs_Idx, degrad
 
     grid=kdv.SpectralGrid(150,300.)
     tInt=3.
@@ -120,14 +153,13 @@ if __name__=="__main__":
     dObs[0.5]=np.array([-120., -34., -20., 2.,  80., 144.])
     dObs[1.2]=np.array([-90., -85, 4., 10.])
     dObs[2.5]=np.array([-50., 0., 50.])
-    obs_degrad=kd_opObs(x0_degrad, grid,  dObs, opObs_Idx_op,
+    obs_degrad=kd_opObs(x0_degrad, grid,  dObs, opObs_Idx,
                             param, maxA)
-    obs_truth=kd_opObs(x0_truth, grid,  dObs, opObs_Idx_op,
+    obs_truth=kd_opObs(x0_truth, grid,  dObs, opObs_Idx,
                             param, maxA)
 
 
-
-
+    
 
 
     nTime=len(obs_degrad.keys())

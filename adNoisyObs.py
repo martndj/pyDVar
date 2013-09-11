@@ -22,8 +22,8 @@ for i in xrange(nObs):
     posObs[i]=-L/2.+i*L/nObs
 
 idxObs=pos2Idx(g, posObs)
-H=opObs_Idx_op
-H_T=opObs_Idx_op_T
+H=opObs_Idx
+H_T=opObs_Idx_T
 argsH=(g, idxObs)
 
 x_noise=degrad(reality(g.x), 0., sigR)

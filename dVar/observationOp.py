@@ -20,14 +20,14 @@ def departure(xi, x_b, var, B_sqrt_op, H, argsH, obs, rCTilde_sqrt):
     Hx=H(x, *argsH)
     return Hx-obs
 
-def opObs_Idx_op(x, g, idxObs):
+def opObs_Idx(x, g, idxObs):
     nObs=len(idxObs)
     H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
         H[i, idxObs[i]]=1.
     return np.dot(H,x)
 
-def opObs_Idx_op_T(obs, g, idxObs):
+def opObs_Idx_T(obs, g, idxObs):
     nObs=len(idxObs)
     H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
