@@ -80,7 +80,7 @@ class DataAss(object):
 
         #----| Minimizing |-----------------------
         xi_a=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
-                                args=costFuncArgs, maxiter=100)
+                                args=costFuncArgs, maxiter=self.maxiter)
 
         #----| Final Gradient test |--------------
         if gradientTest:

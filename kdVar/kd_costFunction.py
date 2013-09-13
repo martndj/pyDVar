@@ -27,8 +27,13 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
     for t in dDep.keys():
         dNormDep[t]=np.dot(dR_inv[t],dDep[t])
 
-    gradJ_o=B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
+    gradJ_o=-1.*B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
                         var, rCTilde_sqrt)
+    #  ??
+    #   I don't understand why I seem to have to add this -1.
+    #  
+    #gradJ_o=B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
+    #                    var, rCTilde_sqrt)
 
     
     return xi+gradJ_o
