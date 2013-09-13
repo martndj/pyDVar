@@ -1,10 +1,10 @@
 import numpy as np
 from kd_observationOp import kd_departure, kd_opObs, kd_opObs_TL,\
-                                kd_opObs_TL_T
+                                kd_opObs_TL_Adj
 from dVar import gradTest,  printGradTest
 
-def costFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
-                    H, H_TL, H_TL_T, argsH, dObs, dR_inv,
+def costFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, H_TL, H_TL_Adj, argsH, dObs, dR_inv,
                     rCTilde_sqrt):
 
 
@@ -16,8 +16,8 @@ def costFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
         J_o+=0.5*np.dot(dD[t],np.dot(dR_inv[t],dD[t]))
     return J_xi+J_o
 
-def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
-                    H, H_TL, H_TL_T, argsH, dObs, dR_inv,
+def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, H_TL, H_TL_Adj, argsH, dObs, dR_inv,
                     rCTilde_sqrt):
 
     dDep=kd_departure(xi, traj_b, var, B_sqrt_op, H, H_TL, argsH, dObs,
@@ -27,7 +27,7 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
     for t in dDep.keys():
         dNormDep[t]=np.dot(dR_inv[t],dDep[t])
 
-    gradJ_o=B_sqrt_op_T(H_TL_T(dNormDep, traj_b, *argsH), 
+    gradJ_o=B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
                         var, rCTilde_sqrt)
 
     
@@ -38,8 +38,8 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
 if __name__=="__main__":
     import matplotlib.pyplot as plt
     from dVar import pos2Idx, fCorr_isoHomo, degrad, \
-                        B_sqrt_op, B_sqrt_op_T, \
-                        rCTilde_sqrt_isoHomo, opObs_Idx, opObs_Idx_T
+                        B_sqrt_op, B_sqrt_op_Adj, \
+                        rCTilde_sqrt_isoHomo, opObs_Idx, opObs_Idx_Adj
     import pyKdV as kdv
     
     
@@ -71,7 +71,7 @@ if __name__=="__main__":
     
     H=kd_opObs
     H_TL=kd_opObs_TL
-    H_TL_T=kd_opObs_TL_T
+    H_TL_Adj=kd_opObs_TL_Adj
     argsHcom=(g, dObsPos, kdvParam, maxA)
     
     sigR=.5
@@ -95,8 +95,8 @@ if __name__=="__main__":
 
 
     #----| Gradient test |--------
-    argsCostFunc=(x_bkg, var, B_sqrt_op, B_sqrt_op_T,
-                    H, H_TL, H_TL_T, argsHcom, dObs_degrad, dR_inv,
+    argsCostFunc=(x_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, H_TL, H_TL_Adj, argsHcom, dObs_degrad, dR_inv,
                     rCTilde_sqrt)
 
     printGradTest(gradTest(costFunc, gradCostFunc, xi, *argsCostFunc))

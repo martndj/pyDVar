@@ -23,7 +23,7 @@ for i in xrange(nObs):
 
 idxObs=pos2Idx(g, posObs)
 H=opObs_Idx
-H_T=opObs_Idx_T
+H_Adj=opObs_Idx_Adj
 argsH=(g, idxObs)
 
 x_noise=degrad(reality(g.x), 0., sigR)
@@ -39,7 +39,7 @@ var=sig*np.ones(g.N)
 xi=np.zeros(g.N)
 
 #----| Minimizing |-----------
-da=DataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_T, H, H_T, argsH, obs, 
+da=DataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_Adj, H, H_Adj, argsH, obs, 
             R_inv, rCTilde_sqrt)
 
 da.minimize()

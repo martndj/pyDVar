@@ -64,7 +64,7 @@ def B_sqrt_op(xi, var, rCTilde_sqrt):
     x1=np.fft.ifft(xiC).real    #   3
     return x1*var               #   4
 
-def B_sqrt_op_T(x, var, rCTilde_sqrt):
+def B_sqrt_op_Adj(x, var, rCTilde_sqrt):
     x1=x*var                    #   4.T
     xiC=ifft_Adj(x1)        #   3.T
     xiR=r2c_Adj(xiC)            #   2.T
@@ -118,7 +118,7 @@ if __name__=='__main__':
     # correlation test
     xDirac=np.zeros(g.N)
     xDirac[Ng/4]=1.
-    xiTest=B_sqrt_op_T(xDirac,  variances, CTilde_sqrt)
+    xiTest=B_sqrt_op_Adj(xDirac,  variances, CTilde_sqrt)
     xTest=B_sqrt_op(xiTest, variances, CTilde_sqrt)
     
     # adjoint test
@@ -131,7 +131,7 @@ if __name__=='__main__':
         xNoise[i]=rnd.gauss(mu, sigNoise)
     testDirect=np.dot(xNoise,
                         B_sqrt_op(yNoise, variances, CTilde_sqrt).conj())
-    testAdjoint=np.dot(B_sqrt_op_T(xNoise, variances, CTilde_sqrt),
+    testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, variances, CTilde_sqrt),
                         yNoise.conj())
     
     #print(testDirect)

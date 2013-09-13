@@ -1,6 +1,6 @@
 import numpy as np
 import pyKdV as kdv
-from dVar import pos2Idx, B_sqrt_op, opObs_Idx, opObs_Idx_T
+from dVar import pos2Idx, B_sqrt_op, opObs_Idx, opObs_Idx_Adj
 
 import matplotlib.pyplot as plt ### to be removed
 
@@ -42,11 +42,11 @@ def kd_departure(xi, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
 
     x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_bkg[0]
     dHtraj_bkg=H(traj_bkg[0], *argsH)
-    dH_TLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
+    dH_AdjLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
 
     dDeparture={}
     for t in dHtraj_bkg.keys():
-        dDeparture[t]=dObs[t]-dHtraj_bkg[t]-dH_TLx[t]
+        dDeparture[t]=dObs[t]-dHtraj_bkg[t]-dH_AdjLx[t]
 
     return dDeparture
 
@@ -126,7 +126,7 @@ def kd_opObs_TL(dx, traj_bkg, g, dObsPos, kdvParam, maxA):
 #-----------------------------------------------------------
 
 
-def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
+def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
     """
         Adjoint of tangent linear observation operator
         for KdV TLM
@@ -157,7 +157,7 @@ def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
     nTime=len(tOrder)
     
     i=0
-    M_TH_TObs=np.zeros(traj_bkg.grid.N)
+    M_TH_AdjObs=np.zeros(traj_bkg.grid.N)
 
     #----| transposed code |--------
     for t in np.sort(dObsPos.keys())[::-1]:
@@ -166,17 +166,17 @@ def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
             t_pre=dObsPos.keys()[tOrder[-1-i]]
         else:
             t_pre=0.
-        w=opObs_Idx_T(dObs[t], g, pos2Idx(g, dObsPos[t]))
+        w=opObs_Idx_Adj(dObs[t], g, pos2Idx(g, dObsPos[t]))
 
 
-        M_TH_TObs=kdv.TLMLauncher(kdvParam, traj_bkg, 
-                        tInt=t-t_pre, t0=t_pre).adjoint(w+M_TH_TObs)
+        M_TH_AdjObs=kdv.TLMLauncher(kdvParam, traj_bkg, 
+                        tInt=t-t_pre, t0=t_pre).adjoint(w+M_TH_AdjObs)
 
 
-        w=M_TH_TObs
+        w=M_TH_AdjObs
     #-------------------------------
     
-    return M_TH_TObs
+    return M_TH_AdjObs
  
  
 
@@ -184,7 +184,7 @@ def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
 if __name__=="__main__":
     import matplotlib.pyplot as plt
     from dVar import pos2Idx, fCorr_isoHomo, degrad, B_sqrt_op, \
-                        rCTilde_sqrt_isoHomo, opObs_Idx, opObs_Idx_T
+                        rCTilde_sqrt_isoHomo, opObs_Idx, opObs_Idx_Adj
     import pyKdV as kdv
     
     
@@ -216,7 +216,7 @@ if __name__=="__main__":
     
     H=kd_opObs
     H_TL=kd_opObs_TL
-    H_TL_T=kd_opObs_TL_T
+    H_TL_Adj=kd_opObs_TL_Adj
     argsHcom=(g, dObsPos, kdvParam, maxA)
     
     sigR=.5
@@ -229,15 +229,15 @@ if __name__=="__main__":
     for t in dObsPos.keys():
         dR_inv[t]=sigR**(-1)*np.eye(len(dObsPos[t]))
     
-    #----| Validating H_TL_T |----
+    #----| Validating H_TL_Adj |----
     x_rnd=kdv.rndFiltVec(g, amp=0.5)
     dY=dObs_degrad
     Hx=H_TL(x_rnd, x_bkg, *argsHcom)
-    H_Ty=H_TL_T(dY, x_bkg, *argsHcom)
+    H_Adjy=H_TL_Adj(dY, x_bkg, *argsHcom)
     prod1=0.
     for t in Hx.keys():
         prod1+=np.dot(dY[t], Hx[t])
-    prod2=np.dot(H_Ty, x_rnd)
+    prod2=np.dot(H_Adjy, x_rnd)
     print(prod1, prod2, np.abs(prod1-prod2))
         
     
