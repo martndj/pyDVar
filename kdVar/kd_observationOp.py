@@ -159,8 +159,6 @@ def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
     i=0
     M_TH_TObs=np.zeros(traj_bkg.grid.N)
 
-    verbose=True
-    if verbose : plt.ion() ###
     #----| transposed code |--------
     for t in np.sort(dObsPos.keys())[::-1]:
         i+=1
@@ -170,20 +168,14 @@ def kd_opObs_TL_T(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
             t_pre=0.
         w=opObs_Idx_T(dObs[t], g, pos2Idx(g, dObsPos[t]))
 
-        if verbose : 
-            plt.subplot(nTime, 1,i)  ###
-            plt.plot(g.x, w) ###
 
         M_TH_TObs=kdv.TLMLauncher(kdvParam, traj_bkg, 
                         tInt=t-t_pre, t0=t_pre).adjoint(w+M_TH_TObs)
 
-        if verbose : plt.plot(g.x,M_TH_TObs )  ###
 
         w=M_TH_TObs
     #-------------------------------
-        print(t, t_pre, t-t_pre)  ### to be removed
     
-    if verbose : plt.ioff()  ###
     return M_TH_TObs
  
  
@@ -217,10 +209,10 @@ if __name__=="__main__":
     
     #----| Observations |---------
     dObsPos={}
-    dObsPos[1.]=np.array([-30.,  70.])
-    dObsPos[3.]=np.array([-120., -34., -20., 2.,  80., 144.])
-    dObsPos[6.]=np.array([-90., -85, 4., 10.])
-    dObsPos[9.]=np.array([-50., 0., 50.])
+    dObsPos[tInt/4.]=np.array([-30.,  70.])
+    dObsPos[tInt/3.]=np.array([-120., -34., -20., 2.,  80., 144.])
+    dObsPos[tInt/2.]=np.array([-90., -85, 4., 10.])
+    dObsPos[tInt]=np.array([-50., 0., 50.])
     
     H=kd_opObs
     H_TL=kd_opObs_TL
@@ -238,7 +230,7 @@ if __name__=="__main__":
         dR_inv[t]=sigR**(-1)*np.eye(len(dObsPos[t]))
     
     #----| Validating H_TL_T |----
-    x_rnd=kdv.rndFiltVec(g,Ntrc=g.Ntrc/4, amp=0.5)
+    x_rnd=kdv.rndFiltVec(g, amp=0.5)
     dY=dObs_degrad
     Hx=H_TL(x_rnd, x_bkg, *argsHcom)
     H_Ty=H_TL_T(dY, x_bkg, *argsHcom)
@@ -249,38 +241,38 @@ if __name__=="__main__":
     print(prod1, prod2, np.abs(prod1-prod2))
         
     
-#    #----| Preconditionning |-----
-#    Lc=10.
-#    sig=0.4
-#    corr=fCorr_isoHomo(g, Lc)
-#    rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
-#    var=sig*np.ones(g.N)
-#    xi=np.zeros(g.N)
-#    
-#    #----| Departures |-----------
-#    dDepartures=kd_departure(xi, x_bkg, var, B_sqrt_op, H, H_TL, argsHcom,
-#                                dObs_degrad, rCTilde_sqrt)
-#    for t in np.sort(dObs_degrad.keys()):
-#        print("t=%f"%t)
-#        print(dDepartures[t])
-#    
-#    
-#    #----| Post-processing |------
-#    nTime=len(dObs_degrad.keys())
-#    plt.figure(figsize=(10.,3.*nTime))
-#    i=0
-#    for t in np.sort(dObs_degrad.keys()):
-#        i+=1
-#        sub=plt.subplot(nTime, 1, i)
-#        ti=whereTrajTime(x_truth, t)
-#        sub.plot(g.x, x_truth[ti], 'g')
-#        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_truth[t], 'go')
-#        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_degrad[t], 'ro')
-#        sub.plot(g.x, x_bkg[ti], 'b')
-#        sub.plot(g.x[pos2Idx(g, dObsPos[t])], 
-#                    x_bkg[ti][pos2Idx(g, dObsPos[t])], 'bo')
-#        sub.set_title("$t=%f$"%t)
-#        if i==nTime:
-#            sub.legend(["$x_{t}$", "$H(x_{t})$", "$y$", "$x_b$", 
-#                        "$H(x_b)$"], loc="lower left")
-#    plt.show()    
+    #----| Preconditionning |-----
+    Lc=10.
+    sig=0.4
+    corr=fCorr_isoHomo(g, Lc)
+    rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
+    var=sig*np.ones(g.N)
+    xi=np.zeros(g.N)
+    
+    #----| Departures |-----------
+    dDepartures=kd_departure(xi, x_bkg, var, B_sqrt_op, H, H_TL, argsHcom,
+                                dObs_degrad, rCTilde_sqrt)
+    for t in np.sort(dObs_degrad.keys()):
+        print("t=%f"%t)
+        print(dDepartures[t])
+    
+    
+    #----| Post-processing |------
+    nTime=len(dObs_degrad.keys())
+    plt.figure(figsize=(10.,3.*nTime))
+    i=0
+    for t in np.sort(dObs_degrad.keys()):
+        i+=1
+        sub=plt.subplot(nTime, 1, i)
+        ti=whereTrajTime(x_truth, t)
+        sub.plot(g.x, x_truth[ti], 'g')
+        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_truth[t], 'go')
+        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_degrad[t], 'ro')
+        sub.plot(g.x, x_bkg[ti], 'b')
+        sub.plot(g.x[pos2Idx(g, dObsPos[t])], 
+                    x_bkg[ti][pos2Idx(g, dObsPos[t])], 'bo')
+        sub.set_title("$t=%f$"%t)
+        if i==nTime:
+            sub.legend(["$x_{t}$", "$H(x_{t})$", "$y$", "$x_b$", 
+                        "$H(x_b)$"], loc="lower left")
+    plt.show()    

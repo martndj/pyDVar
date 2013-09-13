@@ -6,16 +6,16 @@ from observationOp import *
 def costFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_T,
                 H, H_T, argsH, obs, R_inv, rCTilde_sqrt):
 
-    J_xi=0.5*np.dot(xi.T, xi)
+    J_xi=0.5*np.dot(xi, xi)
     d=departure(xi, x_b, var, B_sqrt_op, H, argsH, obs, rCTilde_sqrt)
-    J_o=0.5*np.dot(d.T,np.dot(R_inv,d))
+    J_o=0.5*np.dot(d,np.dot(R_inv,d))
     return J_xi+J_o
 
 def gradCostFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_T,
                     H, H_T, argsH, obs, R_inv, rCTilde_sqrt):
 
     d=departure(xi, x_b, var, B_sqrt_op, H,  argsH, obs, rCTilde_sqrt)
-    gradJ_o=B_sqrt_op_T(H_T(np.dot(R_inv.T, d), *argsH), 
+    gradJ_o=B_sqrt_op_T(H_T(np.dot(R_inv, d), *argsH), 
                             var, rCTilde_sqrt)
     return xi+gradJ_o
 

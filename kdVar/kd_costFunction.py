@@ -26,7 +26,9 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_T,
     dNormDep={}
     for t in dDep.keys():
         dNormDep[t]=np.dot(dR_inv[t],dDep[t])
-    gradJ_o=H_TL_T(dNormDep, traj_b, *argsH)
+
+    gradJ_o=B_sqrt_op_T(H_TL_T(dNormDep, traj_b, *argsH), 
+                        var, rCTilde_sqrt)
 
     
     return xi+gradJ_o
@@ -46,26 +48,26 @@ if __name__=="__main__":
     g=kdv.SpectralGrid(Ntrc, L)
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=10.
+    tInt=3.
     maxA=5.
     
+    model=kdv.Launcher(kdvParam,tInt, maxA)
+
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
     wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
                 +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
     x0_truth=x0_truth_base+wave
-    launcher_truth=kdv.Launcher(kdvParam, x0_truth)
-    x_truth=launcher_truth.integrate(tInt, maxA)
-    
+    x_truth=model.integrate(x0_truth)
+
     x0_bkg=x0_truth_base
-    launcher_bkg=kdv.Launcher(kdvParam, x0_bkg)
-    x_bkg=launcher_bkg.integrate(tInt, maxA)
+    x_bkg=model.integrate(x0_bkg)
     
     #----| Observations |---------
     dObsPos={}
-    dObsPos[1.]=np.array([-30.,  70.])
-    dObsPos[3.]=np.array([-120., -34., -20., 2.,  80., 144.])
-    dObsPos[6.]=np.array([-90., -85, 4., 10.])
-    dObsPos[9.]=np.array([-50., 0., 50.])
+    dObsPos[tInt/4.]=np.array([-30.,  70.])
+    dObsPos[tInt/3.]=np.array([-120., -34., -20., 2.,  80., 144.])
+    dObsPos[tInt/2.]=np.array([-90., -85, 4., 10.])
+    dObsPos[tInt]=np.array([-50., 0., 50.])
     
     H=kd_opObs
     H_TL=kd_opObs_TL
