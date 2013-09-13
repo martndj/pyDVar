@@ -46,7 +46,7 @@ def kd_departure(xi, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
 
     dDeparture={}
     for t in dHtraj_bkg.keys():
-        dDeparture[t]=dObs[t]-dHtraj_bkg[t]-dH_AdjLx[t]
+        dDeparture[t]=-dObs[t]+dHtraj_bkg[t]+dH_AdjLx[t]
 
     return dDeparture
 
