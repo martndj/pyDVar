@@ -14,14 +14,20 @@ __Still under development!__
 
 TODO:
 
- * time assimilation: connecting pyfKdV
  * Data Assimilation OSSE
+
+
+About Data Assimilation concepts
+--------------------------------
+
+
+ * [F. Bouttier, P., Courtier, Data assimilation concepts and methods, ECMWF Meteorological Training Course Lecture Series, March 1999](http://msi.ttu.ee/~elken/Assim_concepts.pdf)
 
 Compiling informations
 ----------------------
 
 ### Python Dependencies
- * [pseudoSpec1D](https://github.com/martndj/pyfKdV/tree/master/pyKdV/pseudoSpec1D) (sub module of [pyfKdV](https://github.com/martndj/pyfKdV))
+ * [pyKdV](https://github.com/martndj/pyfKdV)
  * Numpy
  * Matplotlib
  * Scipy

@@ -146,8 +146,8 @@ if __name__=="__main__":
     g=kdv.SpectralGrid(Ntrc, L)
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=0.4
-    maxA=5.
+    tInt=1.
+    maxA=4.
     
     model=kdv.Launcher(kdvParam,tInt, maxA)
 
@@ -162,9 +162,9 @@ if __name__=="__main__":
     
     #----| Observations |---------
     dObsPos={}
-    nTimeObs=10
-    nPosObs=200
-    for i in xrange(nTimeObs):
+    nTime=10
+    nPosObs=50
+    for i in xrange(nTime):
         dObsPos[tInt/(i+1.)]=np.linspace(-g.L/2., g.L/2., nPosObs)
     
     H=kd_opObs
@@ -184,11 +184,14 @@ if __name__=="__main__":
     #----| Observations to be assimilated
     dObs=dObs_truth
     nTime=len(dObs_degrad.keys())
-    plt.figure(figsize=(10.,3.*(nTime+1)))
+    nSubRow=3
+    nSubLine=nTime/nSubRow+1
+    if nTime%nSubRow: nSubLine+=1
+    plt.figure(figsize=(12.,12.))
     i=0
     for t in np.sort(dObs_degrad.keys()):
         i+=1
-        sub=plt.subplot(nTime+1, 1, i+1)
+        sub=plt.subplot(nSubLine, nSubRow, nSubRow+i)
         ti=whereTrajTime(x_truth, t)
         sub.plot(g.x, x_truth[ti], 'g')
         sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs[t], 'go')
@@ -228,11 +231,11 @@ if __name__=="__main__":
     #----| Assimilation |---------------
     da=KdVDataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
                     H, H_TL, H_TL_Adj, argsHcom, dObs, dR_inv, 
-                    rCTilde_sqrt, maxiter=10)
+                    rCTilde_sqrt)
 
     da.minimize()
     x0_a=da.analysis
-    sub=plt.subplot(nTime+1, 1, 1)
+    sub=plt.subplot(nSubLine, 1,1)
     sub.plot(g.x, x0_truth, 'k--')
     sub.plot(g.x, x0_bkg, 'b')
     sub.plot(g.x, x0_a, 'r')
