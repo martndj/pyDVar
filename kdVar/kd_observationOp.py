@@ -14,7 +14,7 @@ def whereTrajTime(u, time):
 
 #-----------------------------------------------------------
 
-def kd_departure(xi, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
+def kd_departure(x, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
                     rCTilde_sqrt):
     """
         Departures
@@ -22,7 +22,7 @@ def kd_departure(xi, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
 
         Isotropic and homogeneous correlations
 
-        xi          :   preconditioned state variable <numpy.ndarray>
+        x           :   state variable <numpy.ndarray>
         traj_bkg    :   background trajectory <pyKdV.Trajectory>
         var         :   model variances <numpy.ndarray>
         B_sqrt_op   :   B^{1/2} operator
@@ -40,13 +40,12 @@ def kd_departure(xi, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
         if not isinstance(dObs[t], np.ndarray):
             raise obsTimeOpError("dObs[t] <numpy.ndarray>")
 
-    x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_bkg[0]
     dHtraj_bkg=H(traj_bkg[0], *argsH)
     dH_AdjLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
 
     dDeparture={}
     for t in dHtraj_bkg.keys():
-        dDeparture[t]=-dObs[t]+dHtraj_bkg[t]+dH_AdjLx[t]
+        dDeparture[t]=dObs[t]-dHtraj_bkg[t]-dH_AdjLx[t]
 
     return dDeparture
 
