@@ -12,8 +12,7 @@ def costFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
 
 
     x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_b[0]
-    dD=kd_departure(x, traj_b, var, B_sqrt_op, H, H_TL, argsH, dObs,
-                    rCTilde_sqrt)
+    dD=kd_departure(x, traj_b, H, H_TL, argsH, dObs)
     J_o=0.
     for t in dD.keys():
         J_o+=0.5*np.dot(dD[t],np.dot(dR_inv[t],dD[t]))
@@ -24,8 +23,7 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
                     rCTilde_sqrt):
 
     x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_b[0]
-    dDep=kd_departure(x, traj_b, var, B_sqrt_op, H, H_TL, argsH, dObs,
-                    rCTilde_sqrt)
+    dDep=kd_departure(x, traj_b, H, H_TL, argsH, dObs)
 
     dNormDep={}
     for t in dDep.keys():

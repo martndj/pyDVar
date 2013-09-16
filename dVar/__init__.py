@@ -7,4 +7,4 @@ from canonicalInjection import *
 from modelCovariances import *
 from observationOp import *
 from costFunction import *
-from DataAss import * 
+from dataAss import * 

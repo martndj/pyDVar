@@ -19,7 +19,7 @@ def gradCostFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_T,
                             var, rCTilde_sqrt)
     return xi+gradJ_o
 
-def gradTest(costFunc, gradCostFunc, xi, *args):
+def gradTest(costFunc, gradCostFunc, xi, args):
     
     maxPow=-14
     J0=costFunc(xi, *args)

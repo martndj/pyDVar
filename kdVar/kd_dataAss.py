@@ -115,7 +115,7 @@ class KdVDataAss(object):
         #----| Gradient test |--------------------
         if gradientTest:
             printGradTest(gradTest(costFunc, gradCostFunc, xi, 
-                                    *self.costFuncArgs))
+                                    self.costFuncArgs))
 
         #----| Minimizing |-----------------------
         self.minimize=sciOpt.fmin_bfgs
@@ -137,7 +137,7 @@ class KdVDataAss(object):
         #----| Final Gradient test |--------------
         if gradientTest:
             printGradTest(gradTest(costFunc, gradCostFunc, self.xi_a, 
-                                    *self.costFuncArgs))
+                                    self.costFuncArgs))
 
         #----| Analysis |-------------------------
         self.increment=self.B_sqrt(self.xi_a, self.s_var,
@@ -160,23 +160,24 @@ if __name__=="__main__":
     g=kdv.SpectralGrid(Ntrc, L)
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=1.
+    tInt=3.
     maxA=4.
     
     model=kdv.Launcher(kdvParam,tInt, maxA)
 
-    x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
-    soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
-    longWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    x0_truth=x0_truth_base+longWave
+    x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
+    soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
+    longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
+
+    x0_truth=soliton
     x_truth=model.integrate(x0_truth)
 
-    x0_bkg=x0_truth_base
+    x0_bkg=np.zeros(g.N)
     x_bkg=model.integrate(x0_bkg)
     
     #----| Observations |---------
     dObsPos={}
-    nTime=10
+    nTime=9
     nPosObs=50
     for i in xrange(nTime):
         dObsPos[tInt/(i+1.)]=np.linspace(-g.L/2., g.L/2., nPosObs)
@@ -249,11 +250,17 @@ if __name__=="__main__":
 
     da.minimize()
     x0_a=da.analysis
+    x_a=model.integrate(x0_a)
+
     sub=plt.subplot(nSubLine, 1,1)
     sub.plot(g.x, x0_truth, 'k--')
-    sub.plot(g.x, x0_bkg, 'b')
-    sub.plot(g.x, x0_a, 'r')
-    sub.legend(["$x_t$","$x_b$","$x_a$"], loc='best')
+    sub.plot(g.x, x0_bkg, 'b--')
+    sub.plot(g.x, x0_a, 'r--')
+    sub.plot(g.x, x_truth.final(), 'k')
+    sub.plot(g.x, x_bkg.final(), 'b')
+    sub.plot(g.x, x_a.final(), 'r')
+    sub.legend(["${x_t}_0$","${x_b}_0$","${x_a}_0$",
+                "${x_t}_f$","${x_b}_f$","${x_a}_f$"], loc='best')
     plt.show()
 
 

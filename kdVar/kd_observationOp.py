@@ -14,8 +14,7 @@ def whereTrajTime(u, time):
 
 #-----------------------------------------------------------
 
-def kd_departure(x, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
-                    rCTilde_sqrt):
+def kd_departure(x, traj_bkg, H, H_TL, argsH, dObs, tlmObsOp=True):
     """
         Departures
         for KdV TLM
@@ -40,12 +39,21 @@ def kd_departure(x, traj_bkg, var, B_sqrt_op, H, H_TL, argsH, dObs,
         if not isinstance(dObs[t], np.ndarray):
             raise obsTimeOpError("dObs[t] <numpy.ndarray>")
 
-    dHtraj_bkg=H(traj_bkg[0], *argsH)
-    dH_AdjLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
-
     dDeparture={}
-    for t in dHtraj_bkg.keys():
-        dDeparture[t]=dObs[t]-dHtraj_bkg[t]-dH_AdjLx[t]
+    if tlmObsOp:
+        # linear approximation
+        # H(x) ~= H(x_b)+L(x-x_b)
+        dHtraj_bkg=H(traj_bkg[0], *argsH)
+        dH_AdjLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
+        dHx={}
+        for t in dHtraj_bkg.keys():
+            dHx[t]=dHtraj_bkg[t]+dH_AdjLx[t]
+
+    else:
+        dHx=H(x,*argsH)
+    
+    for t in dHx.keys():
+        dDeparture[t]=dObs[t]-dHx[t]
 
     return dDeparture
 
@@ -249,8 +257,7 @@ if __name__=="__main__":
     xi=np.zeros(g.N)
     
     #----| Departures |-----------
-    dDepartures=kd_departure(xi, x_bkg, var, B_sqrt_op, H, H_TL, argsHcom,
-                                dObs_degrad, rCTilde_sqrt)
+    dDepartures=kd_departure(xi, x_bkg, H, H_TL, argsHcom, dObs_degrad)
     for t in np.sort(dObs_degrad.keys()):
         print("t=%f"%t)
         print(dDepartures[t])

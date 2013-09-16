@@ -76,7 +76,7 @@ class DataAss(object):
         #----| Gradient test |--------------------
         if gradientTest:
             printGradTest(gradTest(costFunc, gradCostFunc, xi, 
-                                    *costFuncArgs))
+                                    costFuncArgs))
 
         #----| Minimizing |-----------------------
         xi_a=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
@@ -85,7 +85,7 @@ class DataAss(object):
         #----| Final Gradient test |--------------
         if gradientTest:
             printGradTest(gradTest(costFunc, gradCostFunc, xi_a, 
-                                    *costFuncArgs))
+                                    costFuncArgs))
 
         #----| Analysis |-------------------------
         self.analysis=(self.B_sqrt(xi_a, self.s_var, self.rCTilde_sqrt)
