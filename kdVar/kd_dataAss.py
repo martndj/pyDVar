@@ -40,7 +40,7 @@ class KdVDataAss(object):
 
     def __init__(self, s_grid, traj_bkg, s_var, B_sqrt, B_sqrt_Adj, 
                     H, H_TL, H_TL_Adj, argsH, dObs, dR_inv, rCTilde_sqrt,
-                    maxiter=100):
+                    maxiter=100, retall=False):
 
         if not (isinstance(s_grid, SpectralGrid)):
             raise self.KdVDataAssError("s_grid <SpectralGrid>")
@@ -95,6 +95,7 @@ class KdVDataAss(object):
         self.rCTilde_sqrt=rCTilde_sqrt
 
         self.maxiter=maxiter
+        self.retall=retall
 
 
     #------------------------------------------------------
@@ -103,7 +104,7 @@ class KdVDataAss(object):
 
 
     def minimize(self, gradientTest=True):
-        costFuncArgs=(self.traj_bkg, self.s_var, 
+        self.costFuncArgs=(self.traj_bkg, self.s_var, 
                         self.B_sqrt, self.B_sqrt_Adj,
                         self.H, self.H_TL, self.H_TL_Adj, self.argsH, 
                         self.dObs, self.dR_inv,
@@ -114,21 +115,34 @@ class KdVDataAss(object):
         #----| Gradient test |--------------------
         if gradientTest:
             printGradTest(gradTest(costFunc, gradCostFunc, xi, 
-                                    *costFuncArgs))
+                                    *self.costFuncArgs))
 
         #----| Minimizing |-----------------------
-        xi_a=sciOpt.fmin_bfgs(costFunc, xi, fprime=gradCostFunc,  
-                                args=costFuncArgs, maxiter=self.maxiter)
+        self.minimize=sciOpt.fmin_bfgs
+        minimizeReturn=self.minimize(costFunc, xi, fprime=gradCostFunc,  
+                                        args=self.costFuncArgs, 
+                                        maxiter=self.maxiter,
+                                        retall=self.retall,
+                                        full_output=True)
+        self.xi_a=minimizeReturn[0]
+        self.fOpt=minimizeReturn[1]
+        self.gOpt=minimizeReturn[2]
+        self.hInvOpt=minimizeReturn[3]
+        self.fCalls=minimizeReturn[4]
+        self.gCalls=minimizeReturn[5]
+        self.warnFlag=minimizeReturn[6]
+        if self.retall:
+            self.allvecs=minimizeReturn[7]
 
         #----| Final Gradient test |--------------
         if gradientTest:
-            printGradTest(gradTest(costFunc, gradCostFunc, xi_a, 
-                                    *costFuncArgs))
+            printGradTest(gradTest(costFunc, gradCostFunc, self.xi_a, 
+                                    *self.costFuncArgs))
 
         #----| Analysis |-------------------------
-        self.analysis=(self.B_sqrt(xi_a, self.s_var, self.rCTilde_sqrt)
-                        +self.traj_bkg[0])
-
+        self.increment=self.B_sqrt(self.xi_a, self.s_var,
+                                    self.rCTilde_sqrt)
+        self.analysis=self.increment+self.traj_bkg[0]
 
 
 #===========================================================
@@ -152,9 +166,9 @@ if __name__=="__main__":
     model=kdv.Launcher(kdvParam,tInt, maxA)
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
-    wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
-                +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    x0_truth=x0_truth_base+wave
+    soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
+    longWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    x0_truth=x0_truth_base+longWave
     x_truth=model.integrate(x0_truth)
 
     x0_bkg=x0_truth_base
@@ -231,7 +245,7 @@ if __name__=="__main__":
     #----| Assimilation |---------------
     da=KdVDataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
                     H, H_TL, H_TL_Adj, argsHcom, dObs, dR_inv, 
-                    rCTilde_sqrt)
+                    rCTilde_sqrt, retall=True)
 
     da.minimize()
     x0_a=da.analysis
