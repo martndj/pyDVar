@@ -3,37 +3,54 @@ from kd_observationOp import kd_departure, kd_opObs, kd_opObs_TL,\
                                 kd_opObs_TL_Adj
 from dVar import gradTest,  printGradTest
 
-def costFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
-                    H, H_TL, H_TL_Adj, argsH, dObs, dR_inv,
-                    rCTilde_sqrt):
+def costFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, model, H_TL_Adj, tlmLauncher, tlmLArgs,
+                    argsH, dObs, dR_inv, rCTilde_sqrt,
+                    background=True):
+
+    if background:
+        J_xi=0.5*np.dot(xi, xi)
+        x=B_sqrt_op(xi, var, rCTilde_sqrt)+x_b
+    else:
+        J_xi=0.
+        x=xi
 
 
-    J_xi=0.5*np.dot(xi, xi)
-
-
-    x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_b[0]
-    dD=kd_departure(x, traj_b, H, H_TL, argsH, dObs)
+    dD=kd_departure(x, H, (model,)+argsH, dObs)
     J_o=0.
     for t in dD.keys():
         J_o+=0.5*np.dot(dD[t],np.dot(dR_inv[t],dD[t]))
     return J_xi+J_o
 
-def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
-                    H, H_TL, H_TL_Adj, argsH, dObs, dR_inv,
-                    rCTilde_sqrt):
+def gradCostFunc(xi, x_b, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, model, H_TL_Adj, tlmLauncher, tlmLArgs,
+                    argsH, dObs, dR_inv, rCTilde_sqrt,
+                    background=True):
 
-    x=B_sqrt_op(xi, var, rCTilde_sqrt)+traj_b[0]
-    dDep=kd_departure(x, traj_b, H, H_TL, argsH, dObs)
+    if background:
+        x=B_sqrt_op(xi, var, rCTilde_sqrt)+x_b
+    else:
+        x=xi
+
+    dDep=kd_departure(x, H, (model,)+ argsH, dObs)
 
     dNormDep={}
     for t in dDep.keys():
         dNormDep[t]=np.dot(dR_inv[t],dDep[t])
 
-    gradJ_o=-B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
-                        var, rCTilde_sqrt)
+    #----| building reference trajectory |--------
+    tInt=np.max(dDep.keys())
+    traj_x=model.integrate(x, tInt)
+    tlm=tlmLauncher(traj_x, *tlmLArgs)
 
+    dx0=H_TL_Adj(dNormDep, tlm, *argsH)
+    if background:
+        gradJ_o=-B_sqrt_op_Adj(dx0, var, rCTilde_sqrt)
+        gradJ=xi+gradJ_o
+    else:
+        gradJ=-dx0
     
-    return xi+gradJ_o
+    return gradJ
 
 
 #===========================================================
@@ -53,33 +70,32 @@ if __name__=="__main__":
     tInt=3.
     maxA=5.
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
-    wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
-                +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    x0_truth=x0_truth_base+wave
-    x_truth=model.integrate(x0_truth)
+    soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
+    gaussWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+
+    x0_truth=x0_truth_base+gaussWave
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=x0_truth_base
-    x_bkg=model.integrate(x0_bkg)
+    x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     dObsPos={}
-    dObsPos[tInt/4.]=np.array([-30.,  70.])
-    dObsPos[tInt/3.]=np.array([-120., -34., -20., 2.,  80., 144.])
-    dObsPos[tInt/2.]=np.array([-90., -85, 4., 10.])
-    dObsPos[tInt]=np.array([-50., 0., 50.])
+    nObsTime=4
+    for i in xrange(nObsTime):
+        dObsPos[tInt/(i+1)]=x_truth[x_truth.whereTime(tInt/(i+1))]
     
     H=kd_opObs
-    H_TL=kd_opObs_TL
     H_TL_Adj=kd_opObs_TL_Adj
-    argsHcom=(g, dObsPos, kdvParam, maxA)
-    
+    staticObsOp=None
+    sObsOpArgs=()
+    argsHcom=(g, dObsPos, staticObsOp, sObsOpArgs)
+
     sigR=.5
-    x0_degrad=degrad(x0_truth, 0., sigR)                   
-    dObs_degrad=H(x0_degrad, *argsHcom) 
-    dObs_truth=H(x0_truth,  *argsHcom) 
+    dObs=H(x0_truth, model, *argsHcom) 
                          
     
     dR_inv={}
@@ -97,10 +113,10 @@ if __name__=="__main__":
 
 
     #----| Gradient test |--------
-    argsCostFunc=(x_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
-                    H, H_TL, H_TL_Adj, argsHcom, dObs_degrad, dR_inv,
-                    rCTilde_sqrt)
+    argsCostFunc=(x0_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, model, H_TL_Adj, kdv.TLMLauncher, (kdvParam,),
+                    argsHcom, dObs, dR_inv, rCTilde_sqrt)
 
-    printGradTest(gradTest(costFunc, gradCostFunc, xi, *argsCostFunc))
+    printGradTest(gradTest(costFunc, gradCostFunc, xi, argsCostFunc))
     
 

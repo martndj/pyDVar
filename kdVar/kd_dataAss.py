@@ -5,7 +5,6 @@ import scipy.optimize as sciOpt
 from dVar import gradTest,  printGradTest
 from kd_costFunction import *
 
-
 class KdVDataAss(object):   
     """
     Variational Data Assimilation
@@ -38,19 +37,19 @@ class KdVDataAss(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, s_grid, traj_bkg, s_var, B_sqrt, B_sqrt_Adj, 
-                    H, H_TL, H_TL_Adj, argsH, dObs, dR_inv, rCTilde_sqrt,
-                    maxiter=100, retall=False):
+    def __init__(self, s_grid, x_bkg, s_var, B_sqrt, B_sqrt_Adj, 
+                    H, model, H_TL_Adj, tlmArgs, argsH, dObs, dR_inv, 
+                    rCTilde_sqrt, maxiter=100, retall=False ):
 
         if not (isinstance(s_grid, SpectralGrid)):
             raise self.KdVDataAssError("s_grid <SpectralGrid>")
         self.grid=s_grid
 
-        if not (isinstance(traj_bkg,Trajectory)):
-            raise self.KdVDataAssError("traj_bkg <pyKdV.Trajectory>")
-        if not (traj_bkg.shape[1]==self.grid.N):
-            raise self.KdVDataAssError("traj_bkg.shape[1]<>self.grid.N")
-        self.traj_bkg=traj_bkg
+        if not (isinstance(x_bkg,np.ndarray)):
+            raise self.KdVDataAssError("x_bkg <numpy.ndarray>")
+        if not (len(x_bkg)==self.grid.N):
+            raise self.KdVDataAssError("len(x_bkg)<>self.grid.N")
+        self.x_bkg=x_bkg
 
         if not (isinstance(s_var,np.ndarray)):
             raise self.KdVDataAssError("s_var <numpy.ndarray>")
@@ -63,13 +62,15 @@ class KdVDataAss(object):
         self.B_sqrt=B_sqrt
         self.B_sqrt_Adj=B_sqrt_Adj
 
-        if ((not callable(H)) or (not callable(H_TL))
-            or (not callable(H_TL_Adj))):
-            raise self.KdVDataAssError("H[_TL[_Adj]] <functions>")
+        if ((not callable(H)) or (not callable(H_TL_Adj))):
+            raise self.KdVDataAssError("H[_TL_Adj] <functions>")
+        if not isinstance(model, kdv.Launcher):
+            raise self.KdVDataAssError("model <pyKdV.Launcher>")
+        self.model=model
         self.H=H
-        self.H_TL=H_TL
         self.H_TL_Adj=H_TL_Adj
         self.argsH=argsH
+        self.tlmArgs=tlmArgs
 
         if not (isinstance(dObs, dict)): 
             raise self.KdVDataAssError("dObs <dict>")
@@ -104,9 +105,10 @@ class KdVDataAss(object):
 
 
     def minimize(self, gradientTest=True):
-        self.costFuncArgs=(self.traj_bkg, self.s_var, 
+        self.costFuncArgs=(self.x_bkg, self.s_var, 
                         self.B_sqrt, self.B_sqrt_Adj,
-                        self.H, self.H_TL, self.H_TL_Adj, self.argsH, 
+                        self.H, self.model, self.H_TL_Adj, 
+                        kdv.TLMLauncher, self.tlmArgs, self.argsH, 
                         self.dObs, self.dR_inv,
                         self.rCTilde_sqrt)
        
@@ -142,7 +144,7 @@ class KdVDataAss(object):
         #----| Analysis |-------------------------
         self.increment=self.B_sqrt(self.xi_a, self.s_var,
                                     self.rCTilde_sqrt)
-        self.analysis=self.increment+self.traj_bkg[0]
+        self.analysis=self.increment+self.x_bkg
 
 
 #===========================================================
@@ -161,76 +163,57 @@ if __name__=="__main__":
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
     tInt=3.
-    maxA=4.
+    maxA=2.
+    maxiter=50
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
 
-    x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
-    soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
+    rndLFBase=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
+    soliton=kdv.soliton(g.x, 0., amp=1.9, beta=1., gamma=-1)
     longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
 
-    x0_truth=soliton
-    x_truth=model.integrate(x0_truth)
+    x0_truth=longWave
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=np.zeros(g.N)
-    x_bkg=model.integrate(x0_bkg)
+    x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     dObsPos={}
-    nTime=9
-    nPosObs=50
-    for i in xrange(nTime):
-        dObsPos[tInt/(i+1.)]=np.linspace(-g.L/2., g.L/2., nPosObs)
-    
+    nObsTime=3
+    for i in xrange(nObsTime):
+        dObsPos[tInt/(i+1)]=x_truth[x_truth.whereTime(tInt/(i+1))]
+        
     H=kd_opObs
-    H_TL=kd_opObs_TL
     H_TL_Adj=kd_opObs_TL_Adj
-    argsHcom=(g, dObsPos, kdvParam, maxA)
+    staticObsOp=None
+    sObsOpArgs=()
+    argsHcom=(g, dObsPos, staticObsOp, sObsOpArgs)
     
     sigR=.5
-    x0_degrad=degrad(x0_truth, 0., sigR)                   
-    dObs_degrad=H(x0_degrad, *argsHcom) 
-    dObs_truth=H(x0_truth,  *argsHcom) 
+    dObs=H(x0_truth, model,  *argsHcom) 
     
     dR_inv={}
     for t in dObsPos.keys():
         dR_inv[t]=sigR**(-1)*np.eye(len(dObsPos[t]))
 
     #----| Observations to be assimilated
-    dObs=dObs_truth
-    nTime=len(dObs_degrad.keys())
+    nTime=len(dObs.keys())
     nSubRow=3
     nSubLine=nTime/nSubRow+1
     if nTime%nSubRow: nSubLine+=1
     plt.figure(figsize=(12.,12.))
     i=0
-    for t in np.sort(dObs_degrad.keys()):
+    for t in np.sort(dObs.keys()):
         i+=1
         sub=plt.subplot(nSubLine, nSubRow, nSubRow+i)
         ti=whereTrajTime(x_truth, t)
-        sub.plot(g.x, x_truth[ti], 'g')
-        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs[t], 'go')
+        sub.plot(g.x, dObs[t], 'g')
         sub.plot(g.x, x_bkg[ti], 'b')
-        sub.plot(g.x[pos2Idx(g, dObsPos[t])], 
-                    x_bkg[ti][pos2Idx(g, dObsPos[t])], 'bo')
         sub.set_title("$t=%f$"%t)
         if i==nTime:
-            sub.legend(["$x_{t}$",  "$y$", "$x_b$", 
-                        "$H(x_b)$"], loc="lower left")
+            sub.legend(["$y$", "$x_b$"], loc="lower left")
 
-    #----| Validating H_TL_Adj |----
-    x_rnd=kdv.rndFiltVec(g, amp=0.5)
-    dY=dObs
-    Hx=H_TL(x_rnd, x_bkg, *argsHcom)
-    H_Adjy=H_TL_Adj(dY, x_bkg, *argsHcom)
-    prod1=0.
-    for t in Hx.keys():
-        prod1+=np.dot(dY[t], Hx[t])
-    prod2=np.dot(H_Adjy, x_rnd)
-    print("Validating adjoint of observation TLM")
-    print(np.abs(prod1-prod2))
-        
-    
     #----| Preconditionning |-----------
     Lc=10.
     sig=2.
@@ -240,17 +223,14 @@ if __name__=="__main__":
     xi=np.zeros(g.N)
 
 
-    
-
-
     #----| Assimilation |---------------
-    da=KdVDataAss(g, x_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
-                    H, H_TL, H_TL_Adj, argsHcom, dObs, dR_inv, 
-                    rCTilde_sqrt, retall=True)
+    da=KdVDataAss(g, x0_bkg, var, B_sqrt_op, B_sqrt_op_Adj,
+                    H, model, H_TL_Adj, (kdvParam,), argsHcom, dObs,
+                    dR_inv, rCTilde_sqrt, retall=True, maxiter=maxiter)
 
     da.minimize()
     x0_a=da.analysis
-    x_a=model.integrate(x0_a)
+    x_a=model.integrate(x0_a, tInt)
 
     sub=plt.subplot(nSubLine, 1,1)
     sub.plot(g.x, x0_truth, 'k--')

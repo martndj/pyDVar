@@ -1,5 +1,5 @@
 import numpy as np
-from pseudoSpec1D import Trajectory
+from pyKdV import SpectralGrid, Trajectory
 from dVar import pos2Idx
 
 
@@ -57,7 +57,7 @@ def kd_opObs(x, dynamicModel, g, dObsPos, staticObsOp, sObsArgs):
         staticObsOp :   static observation operator
         sObsArgs    :   static observation operator arguments <list>
     """
-    if not (isinstance(g, kdv.SpectralGrid)):
+    if not (isinstance(g, SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
     if not (isinstance(dObsPos, dict)): 
         raise obsTimeOpError("dObsPos <dict>")
@@ -99,7 +99,7 @@ def kd_opObs_TL(dx, dynamicTLM, g, dObsPos, staticObsOp, sObsArgs):
         staticObsOp :   static observation operator
         sObsArgs    :   static observation operator arguments <list>
     """
-    if not (isinstance(g, kdv.SpectralGrid)):
+    if not (isinstance(g, SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
     if not (isinstance(dObsPos, dict)): 
         raise obsTimeOpError("dObsPos <dict>")
@@ -116,8 +116,7 @@ def kd_opObs_TL(dx, dynamicTLM, g, dObsPos, staticObsOp, sObsArgs):
     t_pre=0.
     dx_pre=dx
     for t in np.sort(dObsPos.keys()):
-        dx_t=dynamicTLM.integrate(dx_pre,
-                                                    tInt=t-t_pre, t0=t_pre)
+        dx_t=dynamicTLM.integrate(dx_pre, tInt=t-t_pre, t0=t_pre)
         t_pre=t
         dx_pre=dx_t
      #-------------------------------
@@ -145,7 +144,7 @@ def kd_opObs_TL_Adj(dObs, dynamicTLM, g, dObsPos, sObsOp_Adj, sObsArgs):
         sObsArgs    :   static observation operator arguments <list>
 
     """
-    if not (isinstance(g, kdv.SpectralGrid)):
+    if not (isinstance(g, SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
     if not (isinstance(dObsPos, dict)): 
         raise obsTimeOpError("dObsPos <dict>")
@@ -195,7 +194,7 @@ if __name__=="__main__":
     
     Ntrc=100
     L=300.
-    g=kdv.SpectralGrid(Ntrc, L)
+    g=SpectralGrid(Ntrc, L)
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
     tInt=10.
