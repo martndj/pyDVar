@@ -163,17 +163,17 @@ if __name__=="__main__":
     tInt=3.
     maxA=4.
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
     soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
     longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
 
     x0_truth=soliton
-    x_truth=model.integrate(x0_truth)
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=np.zeros(g.N)
-    x_bkg=model.integrate(x0_bkg)
+    x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     dObsPos={}
@@ -250,7 +250,7 @@ if __name__=="__main__":
 
     da.minimize()
     x0_a=da.analysis
-    x_a=model.integrate(x0_a)
+    x_a=model.integrate(x0_a, tInt)
 
     sub=plt.subplot(nSubLine, 1,1)
     sub.plot(g.x, x0_truth, 'k--')

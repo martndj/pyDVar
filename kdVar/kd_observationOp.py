@@ -85,7 +85,7 @@ def kd_opObs(x, g, dObsPos, kdvParam, maxA):
     HMx={}
     for t in np.sort(dObsPos.keys()):
         # parallelize this?
-        traj=kdv.Launcher(kdvParam, t, maxA).integrate(x)
+        traj=kdv.Launcher(kdvParam, maxA).integrate(x, t)
         HMx[t]=opObs_Idx(traj.final(), g, pos2Idx(g, dObsPos[t]))
 
     return HMx
@@ -122,8 +122,8 @@ def kd_opObs_TL(dx, traj_bkg, g, dObsPos, kdvParam, maxA):
     t_pre=0.
     dx_pre=dx
     for t in np.sort(dObsPos.keys()):
-        dx_t=kdv.TLMLauncher(kdvParam, traj_bkg,
-                             tInt=t-t_pre, t0=t_pre).integrate(dx_pre)
+        dx_t=kdv.TLMLauncher(traj_bkg,kdvParam).integrate(dx_pre,
+                                                    tInt=t-t_pre, t0=t_pre)
         t_pre=t
         dx_pre=dx_t
      #-------------------------------
@@ -176,8 +176,8 @@ def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
         w=opObs_Idx_Adj(dObs[t], g, pos2Idx(g, dObsPos[t]))
 
 
-        M_TH_AdjObs=kdv.TLMLauncher(kdvParam, traj_bkg, 
-                        tInt=t-t_pre, t0=t_pre).adjoint(w+M_TH_AdjObs)
+        M_TH_AdjObs=kdv.TLMLauncher(traj_bkg, kdvParam).adjoint(
+                                    w+M_TH_AdjObs,tInt=t-t_pre, t0=t_pre)
 
 
         w=M_TH_AdjObs
@@ -203,16 +203,16 @@ if __name__=="__main__":
     tInt=10.
     maxA=5.
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
     wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
                 +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
     x0_truth=x0_truth_base+wave
-    x_truth=model.integrate(x0_truth)
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=x0_truth_base
-    x_bkg=model.integrate(x0_bkg)
+    x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     dObsPos={}

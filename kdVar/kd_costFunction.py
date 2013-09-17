@@ -29,6 +29,7 @@ def gradCostFunc(xi, traj_b, var, B_sqrt_op, B_sqrt_op_Adj,
     for t in dDep.keys():
         dNormDep[t]=np.dot(dR_inv[t],dDep[t])
 
+    # <TODO>: H_TL_Adj must be linearized around x(t) and not x_b(t)
     gradJ_o=-B_sqrt_op_Adj(H_TL_Adj(dNormDep, traj_b, *argsH), 
                         var, rCTilde_sqrt)
 
@@ -53,16 +54,16 @@ if __name__=="__main__":
     tInt=3.
     maxA=5.
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
     wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
                 +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
     x0_truth=x0_truth_base+wave
-    x_truth=model.integrate(x0_truth)
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=x0_truth_base
-    x_bkg=model.integrate(x0_bkg)
+    x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     dObsPos={}
@@ -101,6 +102,6 @@ if __name__=="__main__":
                     H, H_TL, H_TL_Adj, argsHcom, dObs_degrad, dR_inv,
                     rCTilde_sqrt)
 
-    printGradTest(gradTest(costFunc, gradCostFunc, xi, *argsCostFunc))
+    printGradTest(gradTest(costFunc, gradCostFunc, xi, argsCostFunc))
     
 
