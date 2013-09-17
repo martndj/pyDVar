@@ -1,8 +1,7 @@
 import numpy as np
-import pyKdV as kdv
-from dVar import pos2Idx, B_sqrt_op, opObs_Idx, opObs_Idx_Adj
+from pseudoSpec1D import Trajectory
+from dVar import pos2Idx
 
-import matplotlib.pyplot as plt ### to be removed
 
 class obsTimeOpError(Exception):
     pass
@@ -14,23 +13,19 @@ def whereTrajTime(u, time):
 
 #-----------------------------------------------------------
 
-def kd_departure(x, traj_bkg, H, H_TL, argsH, dObs, tlmObsOp=True):
+def kd_departure(x, H, argsH, dObs):
     """
         Departures
         for KdV TLM
 
-        Isotropic and homogeneous correlations
 
         x           :   state variable <numpy.ndarray>
-        traj_bkg    :   background trajectory <pyKdV.Trajectory>
-        var         :   model variances <numpy.ndarray>
-        B_sqrt_op   :   B^{1/2} operator
         H           :   non-linear observation operator
-        H_TL        :   tangent linear observation operator
         argsH       :   observation operators common arguments <list>
         dObs        :   observations <dict>
                             {time <float>   :   values <np.array>, ...}
-        rCTilde_sqrt:   CTilde^{1/2} diagonal <numpy.ndarray>
+
+        <!> for incremental, define dObs as y'=y-H(x_b)
     """
     
     if not (isinstance(dObs, dict)): 
@@ -40,17 +35,7 @@ def kd_departure(x, traj_bkg, H, H_TL, argsH, dObs, tlmObsOp=True):
             raise obsTimeOpError("dObs[t] <numpy.ndarray>")
 
     dDeparture={}
-    if tlmObsOp:
-        # linear approximation
-        # H(x) ~= H(x_b)+L(x-x_b)
-        dHtraj_bkg=H(traj_bkg[0], *argsH)
-        dH_AdjLx=H_TL(x-traj_bkg[0], traj_bkg, *argsH)
-        dHx={}
-        for t in dHtraj_bkg.keys():
-            dHx[t]=dHtraj_bkg[t]+dH_AdjLx[t]
-
-    else:
-        dHx=H(x,*argsH)
+    dHx=H(x,*argsH)
     
     for t in dHx.keys():
         dDeparture[t]=dObs[t]-dHx[t]
@@ -59,17 +44,18 @@ def kd_departure(x, traj_bkg, H, H_TL, argsH, dObs, tlmObsOp=True):
 
 #-----------------------------------------------------------
 
-def kd_opObs(x, g, dObsPos, kdvParam, maxA):
+def kd_opObs(x, dynamicModel, g, dObsPos, staticObsOp, sObsArgs):
     """
         Non-linear observation operator
         for KdV NL propagation
 
         x           :   state <numpy.ndarray>
+        dynamicModel:   model launcher with integrate() method <Launcher>
         g           :   <SpectralGrid>
         dObsPos     :   observation coordinates <dict>
                             {time <float>   :   positions <np.array>, ...}
-        kdvParam    :   <pyKdV.Param>
-        maxA        :   maximum expected amplitude <float>
+        staticObsOp :   static observation operator
+        sObsArgs    :   static observation operator arguments <list>
     """
     if not (isinstance(g, kdv.SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
@@ -78,35 +64,41 @@ def kd_opObs(x, g, dObsPos, kdvParam, maxA):
     for t in dObsPos.iterkeys():
         if not isinstance(dObsPos[t], np.ndarray):
             raise obsTimeOpError("dObsPos[t] <numpy.ndarray>")
-    if not (isinstance(kdvParam, kdv.Param)):
-        raise obsTimeOpError("kdvParam <pyKdV.Param>")
+    
+    if not (staticObsOp==None or callable(staticObsOp)):
+        raise obsTimeOpError("staticObsOp <None | function>")
+    if not isinstance(dynamicModel, object):
+        raise obsTimeOpError("dynamicModel <Launcher object>")
 
     #----| Model equivalent |-----------
     HMx={}
     for t in np.sort(dObsPos.keys()):
-        # parallelize this?
-        traj=kdv.Launcher(kdvParam, t, maxA).integrate(x)
-        HMx[t]=opObs_Idx(traj.final(), g, pos2Idx(g, dObsPos[t]))
-
+        traj=dynamicModel.integrate(x,t)
+        if staticObsOp==None:
+            HMx[t]=traj.final()
+        else:
+            HMx[t]=staticObsOp(traj.final(), g, pos2Idx(g, dObsPos[t]),
+                                *sObsArgs)
+        # <TODO> continue integration from t ?
+ 
     return HMx
 
 
 #-----------------------------------------------------------
 
-def kd_opObs_TL(dx, traj_bkg, g, dObsPos, kdvParam, maxA):
+def kd_opObs_TL(dx, dynamicTLM, g, dObsPos, staticObsOp, sObsArgs):
     """
         Tangent linear observation operator
         for KdV TLM
 
         dx          :   state increment <numpy.ndarray>
-        traj_bkg    :   background trajectory <pyKdV.Trajectory>
+        dynamicTLM  :   TLM launcher with integrate() method
         g           :   <SpectralGrid>
         dObsPos     :   observation coordinates <dict>
                             {time <float>   :   positions <np.array>, ...}
-        kdvParam    :   <pyKdV.Param>
+        staticObsOp :   static observation operator
+        sObsArgs    :   static observation operator arguments <list>
     """
-    if not (isinstance(traj_bkg, kdv.Trajectory)):
-        raise obsTimeOpError("traj_bkg <pyKdV.Trajectory>")
     if not (isinstance(g, kdv.SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
     if not (isinstance(dObsPos, dict)): 
@@ -114,42 +106,45 @@ def kd_opObs_TL(dx, traj_bkg, g, dObsPos, kdvParam, maxA):
     for t in dObsPos.iterkeys():
         if not isinstance(dObsPos[t], np.ndarray):
             raise obsTimeOpError("dObsPos[t] <numpy.ndarray>")
-    if not (isinstance(kdvParam, kdv.Param)):
-        raise obsTimeOpError("kdvParam <pyKdV.Param>")
+    if not (staticObsOp==None or callable(staticObsOp)):
+        raise obsTimeOpError("staticObsOp <None | function>")
+    if not isinstance(dynamicTLM, object):
+        raise obsTimeOpError("dynamicTLM <Launcher object>")
 
     HMdx={}
     #----| code to be transposed |--
     t_pre=0.
     dx_pre=dx
     for t in np.sort(dObsPos.keys()):
-        dx_t=kdv.TLMLauncher(kdvParam, traj_bkg,
-                             tInt=t-t_pre, t0=t_pre).integrate(dx_pre)
+        dx_t=dynamicTLM.integrate(dx_pre,
+                                                    tInt=t-t_pre, t0=t_pre)
         t_pre=t
         dx_pre=dx_t
      #-------------------------------
-        HMdx[t]=opObs_Idx(dx_t, g, pos2Idx(g, dObsPos[t]))
+        if staticObsOp==None:
+            HMdx[t]=dx_t
+        else:
+            HMdx[t]=staticObsOp(dx_t, g, pos2Idx(g, dObsPos[t]), *sObsArgs)
     return HMdx
  
 #-----------------------------------------------------------
 
 
-def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
+def kd_opObs_TL_Adj(dObs, dynamicTLM, g, dObsPos, sObsOp_Adj, sObsArgs):
     """
         Adjoint of tangent linear observation operator
         for KdV TLM
 
         dObs        :   observations <dict>
                             {time <float>   :   values <np.array>, ...}
-        traj_bkg    :   background trajectory <pyKdV.Trajectory>
+        dynamicTLM  :   TLM launcher with adjoint() method
         g           :   <SpectralGrid>
         dObsPos     :   observation coordinates <dict>
                             {time <float>   :   positions <np.array>, ...}
-        kdvParam    :   <pyKdV.Param>
+        sObsOp_Adj  :   static observation operator adjoint
+        sObsArgs    :   static observation operator arguments <list>
 
-        <!> does not validate adjoint test
     """
-    if not (isinstance(traj_bkg, kdv.Trajectory)):
-        raise obsTimeOpError("traj_bkg <pyKdV.Trajectory>")
     if not (isinstance(g, kdv.SpectralGrid)):
         raise obsTimeOpError("g <pyKdV.SpectralGrid>")
     if not (isinstance(dObsPos, dict)): 
@@ -157,14 +152,16 @@ def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
     for t in dObsPos.iterkeys():
         if not isinstance(dObsPos[t], np.ndarray):
             raise obsTimeOpError("dObsPos[t] <numpy.ndarray>")
-    if not (isinstance(kdvParam, kdv.Param)):
-        raise obsTimeOpError("kdvParam <pyKdV.Param>")
+    if not (sObsOp_Adj==None or callable(sObsOp_Adj)):
+        raise obsTimeOpError("sObsOp_Adj <None | function>")
+    if not isinstance(dynamicTLM, object):
+        raise obsTimeOpError("dynamicTLM <Launcher object>")
 
     tOrder=np.argsort(dObsPos.keys())
     nTime=len(tOrder)
     
     i=0
-    M_TH_AdjObs=np.zeros(traj_bkg.grid.N)
+    M_TH_AdjObs=np.zeros(g.N)
 
     #----| transposed code |--------
     for t in np.sort(dObsPos.keys())[::-1]:
@@ -173,12 +170,14 @@ def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
             t_pre=dObsPos.keys()[tOrder[-1-i]]
         else:
             t_pre=0.
-        w=opObs_Idx_Adj(dObs[t], g, pos2Idx(g, dObsPos[t]))
+        if sObsOp_Adj==None:
+            w=dObs[t]
+        else:
+            w=sObsOp_Adj(dObs[t], g, pos2Idx(g, dObsPos[t]),  *sObsArgs)
 
 
-        M_TH_AdjObs=kdv.TLMLauncher(kdvParam, traj_bkg, 
-                        tInt=t-t_pre, t0=t_pre).adjoint(w+M_TH_AdjObs)
-
+        M_TH_AdjObs=dynamicTLM.adjoint(w+M_TH_AdjObs,
+                                        tInt=t-t_pre, t0=t_pre)
 
         w=M_TH_AdjObs
     #-------------------------------
@@ -190,9 +189,8 @@ def kd_opObs_TL_Adj(dObs, traj_bkg, g, dObsPos, kdvParam, maxA):
 #===========================================================
 if __name__=="__main__":
     import matplotlib.pyplot as plt
-    from dVar import pos2Idx, fCorr_isoHomo, degrad, B_sqrt_op, \
-                        rCTilde_sqrt_isoHomo, opObs_Idx, opObs_Idx_Adj
     import pyKdV as kdv
+    from dVar import degrad
     
     
     Ntrc=100
@@ -203,33 +201,34 @@ if __name__=="__main__":
     tInt=10.
     maxA=5.
     
-    model=kdv.Launcher(kdvParam,tInt, maxA)
+    model=kdv.Launcher(kdvParam, maxA)
+
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
-    wave=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)\
-                +1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    x0_truth=x0_truth_base+wave
-    x_truth=model.integrate(x0_truth)
+    gaussWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
+
+    x0_truth=x0_truth_base+gaussWave
+    x_truth=model.integrate(x0_truth, tInt)
 
     x0_bkg=x0_truth_base
-    x_bkg=model.integrate(x0_bkg)
-    
+    x_bkg=model.integrate(x0_bkg, tInt)
+
     #----| Observations |---------
     dObsPos={}
-    dObsPos[tInt/4.]=np.array([-30.,  70.])
-    dObsPos[tInt/3.]=np.array([-120., -34., -20., 2.,  80., 144.])
-    dObsPos[tInt/2.]=np.array([-90., -85, 4., 10.])
-    dObsPos[tInt]=np.array([-50., 0., 50.])
+    nObsTime=4
+    for i in xrange(nObsTime):
+        dObsPos[tInt/(i+1)]=x_truth[x_truth.whereTime(tInt/(i+1))]
     
     H=kd_opObs
     H_TL=kd_opObs_TL
     H_TL_Adj=kd_opObs_TL_Adj
-    argsHcom=(g, dObsPos, kdvParam, maxA)
+    staticObsOp=None
+    sObsOpArgs=()
+    argsHcom=(g, dObsPos, staticObsOp, sObsOpArgs)
     
     sigR=.5
-    x0_degrad=degrad(x0_truth, 0., sigR)                   
-    dObs_degrad=H(x0_degrad, *argsHcom) 
-    dObs_truth=H(x0_truth,  *argsHcom) 
+    dObs=H(x0_truth, model, *argsHcom) 
                          
     
     dR_inv={}
@@ -238,9 +237,10 @@ if __name__=="__main__":
     
     #----| Validating H_TL_Adj |----
     x_rnd=kdv.rndFiltVec(g, amp=0.5)
-    dY=dObs_degrad
-    Hx=H_TL(x_rnd, x_bkg, *argsHcom)
-    H_Adjy=H_TL_Adj(dY, x_bkg, *argsHcom)
+    tlm=kdv.TLMLauncher(x_truth, kdvParam)
+    dY=dObs
+    Hx=H_TL(x_rnd, tlm, *argsHcom)
+    H_Adjy=H_TL_Adj(dY, tlm, *argsHcom)
     prod1=0.
     for t in Hx.keys():
         prod1+=np.dot(dY[t], Hx[t])
@@ -248,37 +248,27 @@ if __name__=="__main__":
     print(prod1, prod2, np.abs(prod1-prod2))
         
     
-    #----| Preconditionning |-----
-    Lc=10.
-    sig=0.4
-    corr=fCorr_isoHomo(g, Lc)
-    rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
-    var=sig*np.ones(g.N)
-    xi=np.zeros(g.N)
-    
     #----| Departures |-----------
-    dDepartures=kd_departure(xi, x_bkg, H, H_TL, argsHcom, dObs_degrad)
-    for t in np.sort(dObs_degrad.keys()):
-        print("t=%f"%t)
-        print(dDepartures[t])
-    
+    argsDep=(model,)+ argsHcom
+    dDepartures=kd_departure(x0_bkg, H, argsDep, dObs)
+
     
     #----| Post-processing |------
-    nTime=len(dObs_degrad.keys())
+    nTime=len(dObs.keys())
     plt.figure(figsize=(10.,3.*nTime))
     i=0
-    for t in np.sort(dObs_degrad.keys()):
+    for t in np.sort(dObs.keys()):
         i+=1
-        sub=plt.subplot(nTime, 1, i)
+        sub=plt.subplot(2*nTime, 1, 2*i-1)
         ti=whereTrajTime(x_truth, t)
-        sub.plot(g.x, x_truth[ti], 'g')
-        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_truth[t], 'go')
-        sub.plot(g.x[pos2Idx(g, dObsPos[t])], dObs_degrad[t], 'ro')
+        sub.plot(g.x, dObs[t], 'g')
         sub.plot(g.x, x_bkg[ti], 'b')
-        sub.plot(g.x[pos2Idx(g, dObsPos[t])], 
-                    x_bkg[ti][pos2Idx(g, dObsPos[t])], 'bo')
         sub.set_title("$t=%f$"%t)
         if i==nTime:
-            sub.legend(["$x_{t}$", "$H(x_{t})$", "$y$", "$x_b$", 
-                        "$H(x_b)$"], loc="lower left")
+            sub.legend(["$x_{t}$", "$y$", "$x_b$"], loc="lower left")
+
+        subDep=plt.subplot(2*nTime, 1, 2*i)
+        subDep.plot(g.x, dDepartures[t], 'r')
+        subDep.axhline(y=0, color='k')
+
     plt.show()    
