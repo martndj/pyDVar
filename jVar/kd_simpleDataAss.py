@@ -161,7 +161,7 @@ if __name__=="__main__":
     g=kdv.SpectralGrid(Ntrc, L)
         
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=30.
+    tInt=10.
     maxA=2.
     maxiter=50
     
@@ -171,17 +171,17 @@ if __name__=="__main__":
     soliton=kdv.soliton(g.x, 0., amp=1.9, beta=1., gamma=-1)
     longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
 
-    x0_truth=rndLFBase+longWave+soliton
+    x0_truth=soliton
     x_truth=model.integrate(x0_truth, tInt)
 
-    x0_bkg=rndLFBase
+    x0_bkg=np.zeros(g.N)
     x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
     d_ObsPos={}
     nObsTime=3
     for i in xrange(nObsTime):
-        d_ObsPos[tInt/(i+1)]=x_truth[x_truth.whereTime(tInt/(i+1))]
+        d_ObsPos[tInt/(i+1)]=x_truth.whereTime(tInt/(i+1))
         
     H=kd_opObs
     H_TL_Adj=kd_opObs_TL_Adj
