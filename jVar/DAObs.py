@@ -1,5 +1,5 @@
 import numpy as np
-import pseudoSpec1D as ps1d
+from pseudoSpec1D import SpectralGrid, Launcher
 import random as rnd
 
 #-----------------------------------------------------------
@@ -92,9 +92,10 @@ class StaticObs(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, coord, values, obsOp, obsOpArgs=()):
+    def __init__(self, coord, values, obsOp,
+                    obsOpArgs=(), metric=None):
 
-        if isinstance(coord, ps1d.SpectralGrid):
+        if isinstance(coord, SpectralGrid):
             self.coord=coord.x
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
@@ -119,6 +120,17 @@ class StaticObs(object):
         self.obsOp=obsOp
         self.obsOpArgs=obsOpArgs
 
+        if metric==None:
+            self.metric=np.eye(self.nObs)
+        elif isinstance(metric, np.ndarray):
+            if metric.ndim==1:
+                self.metric=np.diag(metric)
+            elif metric.ndom==2:
+                self.metric=metric
+            else:
+                raise self.StaticObsError("metric.ndim=[1|2]")
+        else:   
+            raise self.StaticObsError("metric <None | numpy.ndarray>")
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
@@ -148,7 +160,7 @@ class StaticObs(object):
 
     #------------------------------------------------------
 
-    def modelSpace(self, g):
+    def interpolate(self, g):
         return g.x[self.__pos2Idx(g)]
 
 
@@ -158,9 +170,16 @@ class StaticObs(object):
 #=====================================================================
 
 
-class timeWindowObs(object):
+class TimeWindowObs(object):
+    """
+    TimeWindowObs : discrete times observations class
 
-    class timeWindowObsError(Exception):
+        d_Obs       :   {time : <staticObs>} <dict>
+        propagator  :   propagator launcher <Launcher>
+
+    """
+
+    class TimeWindowObsError(Exception):
         pass
 
 
@@ -168,33 +187,39 @@ class timeWindowObs(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, d_Obs, propagator):
+    def __init__(self, d_Obs):
         
         if not isinstance(d_Obs, dict):
-            raise timeWindowObsError("d_Obs <dict {time:<StaticObs>}>")
+            raise TimeWindowObsError("d_Obs <dict {time:<StaticObs>}>")
         for t in d_Obs.keys():
             if not (isinstance(t, (float,int)) 
                     and isinstance(d_Obs[t], StaticObs)):
-                raise timeWindowObsError(
+                raise TimeWindowObsError(
                         "d_Obs <dict {time <float>: <StaticObs>}>")
+            if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
+                raise TimeWindowObsError("all obsOp must be the same")
         self.times=np.sort(d_Obs.keys())
         self.tMax=self.times.max()
         self.d_Obs=d_Obs
+        self.obsOp=d_Obs[d_Obs.keys()[0]].obsOp
+        self.obsOpArgs=d_Obs[d_Obs.keys()[0]].obsOpArgs
 
-        if not isinstance(propagator, object):
-            raise timeWindowObsError("propagator <Launcher object>")
-        self.propagator=propagator
                 
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __integrate(self, x):
+    def __integrate(self, x, propagator):
+        if not isinstance(propagator, Launcher):
+            raise TimeWindowObsError("propagator <Launcher>")
         d_xt={}
         t0=0.
         x0=x
         for t in self.times:
-            d_xt[t]=(self.propagator.integrate(x0,t-t0)).final()    
+            if t==0.:
+                d_xt[t]=x0
+            else:
+                d_xt[t]=(propagator.integrate(x0,t-t0)).final()    
             x0=d_xt[t]
             t0=t
         
@@ -203,18 +228,22 @@ class timeWindowObs(object):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def modelEquivalent(self, x, g):
-        
+    def modelEquivalent(self, x, propagator):
+        if not isinstance(propagator, Launcher):
+            raise TimeWindowObsError("propagator <Launcher>")
+        g=propagator.grid
         d_Hx={}
-        d_xt=self.__integrate(x)
+        d_xt=self.__integrate(x, propagator)
         for t in self.times:
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
         return d_Hx
 
     #------------------------------------------------------
     
-    def innovation(self, x, g):
-
+    def innovation(self, x, propagator):
+        if not isinstance(propagator, Launcher):
+            raise TimeWindowObsError("propagator <Launcher>")
+        g=propagator.grid
         d_inno={}
         d_Hx=self.modelEquivalent(x, g)
         for t in self.times:
@@ -261,20 +290,20 @@ if __name__=="__main__":
     plt.title("Static observations")
     plt.plot(g.x, x0_degrad, 'r', linewidth=3)
     plt.plot(g.x, x0_truth, 'k', linewidth=3)
-    plt.plot(obs1.modelSpace(g), obs1.values, 'g')
-    plt.plot(obs1.modelSpace(g), obs1.modelEquivalent(x0_truth, g), 'b')
+    plt.plot(obs1.interpolate(g), obs1.values, 'g')
+    plt.plot(obs1.interpolate(g), obs1.modelEquivalent(x0_truth, g), 'b')
     plt.subplot(212)
     plt.plot(g.x, x0_degrad, 'r')
     plt.plot(g.x, x0_truth, 'k', linewidth=3)
-    plt.plot(obs2.modelSpace(g), obs2.values, 'go')
-    plt.plot(obs2.modelSpace(g), obs2.modelEquivalent(x0_truth, g), 'bo')
+    plt.plot(obs2.interpolate(g), obs2.values, 'go')
+    plt.plot(obs2.interpolate(g), obs2.modelEquivalent(x0_truth, g), 'bo')
 
     #----| time window obs |----------------------
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
     tInt=10.
     maxA=5.
     
-    model=kdv.Launcher(kdvParam, maxA)
+    model=kdv.kdvLauncher(kdvParam, maxA)
     x_truth=model.integrate(x0_truth, tInt)
     x_degrad=model.integrate(x0_degrad, tInt)
 
@@ -283,7 +312,7 @@ if __name__=="__main__":
     for i in xrange(nObsTime):
         d_Obs1[tInt*(i+1)/nObsTime]=StaticObs(g,
             x_degrad.whereTime(tInt*(i+1)/nObsTime), None)
-    timeObs1=timeWindowObs(d_Obs1, model)
+    timeObs1=TimeWindowObs(d_Obs1)
 
     d_Obs2={}
     for i in xrange(nObsTime):
@@ -292,7 +321,7 @@ if __name__=="__main__":
         obsCoord=captorPosition+np.array([-10.,-5.,0.,5.,10.])
         obsValues=x_degrad.whereTime(t)[pos2Idx(g, obsCoord)]
         d_Obs2[t]=StaticObs(obsCoord,obsValues, obsOp_Coord)
-    timeObs2=timeWindowObs(d_Obs2, model)
+    timeObs2=TimeWindowObs(d_Obs2)
 
 
     plt.figure()
@@ -302,7 +331,7 @@ if __name__=="__main__":
         sub=plt.subplot(nObsTime, 1, i)
         sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
         sub.plot(g.x, x_degrad.whereTime(t), 'r', linewidth=2.5)
-        sub.plot(timeObs1[t].modelSpace(g), timeObs1[t].values, 'g')
+        sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
         sub.set_title("t=%.2f"%t)
 
     plt.figure()
@@ -312,6 +341,6 @@ if __name__=="__main__":
         sub=plt.subplot(nObsTime, 1, i)
         sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
         sub.plot(g.x, x_degrad.whereTime(t), 'r')
-        sub.plot(timeObs2[t].modelSpace(g), timeObs2[t].values, 'go')
+        sub.plot(timeObs2[t].interpolate(g), timeObs2[t].values, 'go')
         sub.set_title("t=%.2f"%t)
     plt.show()

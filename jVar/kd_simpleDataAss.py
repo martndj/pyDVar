@@ -171,10 +171,10 @@ if __name__=="__main__":
     soliton=kdv.soliton(g.x, 0., amp=1.9, beta=1., gamma=-1)
     longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
 
-    x0_truth=soliton
+    x0_truth=rndLFBase+longWave+soliton
     x_truth=model.integrate(x0_truth, tInt)
 
-    x0_bkg=np.zeros(g.N)
+    x0_bkg=rndLFBase
     x_bkg=model.integrate(x0_bkg, tInt)
     
     #----| Observations |---------
