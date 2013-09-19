@@ -42,9 +42,20 @@ class StaticObsJTerm(JTerm):
         self.testGrad=testGrad
         self.testGradMinPow=-1
         self.testGradMaxPow=-14
-        #super(PrecondJTerm, self).__configure(maxiter,
-        #                                    retall, testAdj, testGrad, 
-        #                                    testGradMinPow, testGradMaxPow)
+
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __xValidate(self, x):
+        if not isinstance(x, np.ndarray):
+            raise self.TWObsJTermError("x <numpy.array>")
+        if not x.dtype=='float64':
+            raise self.TWObsJTermError("x.dtype=='float64'")
+        if x.ndim<>1:
+            raise self.TWObsJTermError("x.ndim==1")
+        if len(x)<>self.nlModel.grid.N:
+            raise self.TWObsJTermError("len(x)==self.nlModel.grid.N")
 
     #------------------------------------------------------
     #----| Public methods |--------------------------------
@@ -108,9 +119,6 @@ class TWObsJTerm(JTerm):
         self.testGrad=testGrad
         self.testGradMinPow=-1
         self.testGradMaxPow=-14
-        #super(PrecondJTerm, self).__configure(maxiter,
-        #                                    retall, testAdj, testGrad, 
-        #                                    testGradMinPow, testGradMaxPow)
 
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -119,12 +127,13 @@ class TWObsJTerm(JTerm):
     def __xValidate(self, x):
         if not isinstance(x, np.ndarray):
             raise self.TWObsJTermError("x <numpy.array>")
+        if not x.dtype=='float64':
+            raise self.TWObsJTermError("x.dtype=='float64'")
         if x.ndim<>1:
             raise self.TWObsJTermError("x.ndim==1")
         if len(x)<>self.nlModel.grid.N:
             raise self.TWObsJTermError("len(x)==self.nlModel.grid.N")
             
-
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -148,7 +157,7 @@ class TWObsJTerm(JTerm):
         #----| building reference trajectory |--------
         tInt=np.max(self.obs.times)
         traj_x=self.nlModel.integrate(x, tInt)
-        tlm.initialize(traj_x)
+        self.tlm.initialize(traj_x)
         #----| Adjoint retropropagation |-------------
         i=0
         MAdjObs=np.zeros(self.nlModel.grid.N)
@@ -166,7 +175,7 @@ class TWObsJTerm(JTerm):
                                         *self.obs[t].obsOpArgs)
 
             #print(t, t_pre, t-t_pre)
-            MAdjObs=tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
+            MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
             w=MAdjObs
         
         return -MAdjObs
@@ -174,6 +183,7 @@ class TWObsJTerm(JTerm):
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
+
 
 if __name__=='__main__':
 

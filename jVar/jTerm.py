@@ -38,15 +38,6 @@ class JTerm(object):
             raise self.JTermError("args <tuple>")
         self.args=args
 
-        self.__configure(maxiter, retall, testAdj, testGrad, 
-                            testGradMinPow, testGradMaxPow)
-
-    #------------------------------------------------------
-    #----| Private methods |-------------------------------
-    #------------------------------------------------------
-
-    def __configure(self, maxiter, retall, testAdj, testGrad, 
-                            testGradMinPow, testGradMaxPow):
         self.maxiter=maxiter
         self.retall=retall
         self.testAdj=testAdj
@@ -68,7 +59,8 @@ class JTerm(object):
     #------------------------------------------------------
 
     def minimize(self, x_fGuess):
-        
+        if x_fGuess.dtype<>'float64':
+            raise JTermError("x_fGuess.dtype=='float64'")
         #----| Gradient test |--------------------
         if self.testGrad:
             self.gradTest(x_fGuess)
@@ -83,6 +75,7 @@ class JTerm(object):
         self.x_a=minimizeReturn[0]
         self.fOpt=minimizeReturn[1]
         self.gOpt=minimizeReturn[2]
+        self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
         self.hInvOpt=minimizeReturn[3]
         self.fCalls=minimizeReturn[4]
         self.gCalls=minimizeReturn[5]
@@ -171,9 +164,9 @@ class JTerm(object):
 #---------------------------------------------------------------------
 #=====================================================================
 
-class PrecondJTerm(JTerm):
+class TrivialJTerm(JTerm):
     
-    class PrecondJTermError(Exception):
+    class TrivialJTermError(Exception):
         pass
 
 
@@ -192,7 +185,7 @@ class PrecondJTerm(JTerm):
         self.testGrad=testGrad
         self.testGradMinPow=-1
         self.testGradMaxPow=-14
-        #super(PrecondJTerm, self).__configure(maxiter,
+        #super(TrivialJTerm, self).__configure(maxiter,
         #                                    retall, testAdj, testGrad, 
         #                                    testGradMinPow, testGradMaxPow)
 
@@ -227,7 +220,7 @@ class PrecondJTerm(JTerm):
 
 if __name__=='__main__':
 
-    J1=PrecondJTerm()
+    J1=TrivialJTerm()
     x=np.ones(10)
     
     print("====| Simple cost function |=======")
@@ -238,7 +231,7 @@ if __name__=='__main__':
     print(J1.x_a)
 
 
-    J2=PrecondJTerm()
+    J2=TrivialJTerm()
     print("\n\n====| Two terms cost function |====")
     print("First Guess:")
     print(x)
