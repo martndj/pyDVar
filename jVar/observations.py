@@ -92,7 +92,7 @@ class StaticObs(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, coord, values, obsOp,
+    def __init__(self, coord, values, obsOp=None, obsOpTLMAdj=None,
                     obsOpArgs=(), metric=None):
 
         if isinstance(coord, SpectralGrid):
@@ -113,11 +113,14 @@ class StaticObs(object):
             raise self.StaticObsError("len(values)==self.nObs")
         self.values=values
 
-        if not (callable(obsOp) or obsOp==None):
-            raise self.StaticObsError("obsOp <function | None>")
+        if not ((callable(obsOp) and callable(obsOpTLMAdj)) or 
+                (obsOp==None and obsOpTLMAdj==None)):
+            raise self.StaticObsError(
+                                "obsOp, obsOpTLMAdj <function | None>")
         if not isinstance(obsOpArgs, tuple):
             raise self.StaticObsError("obsOpArgs <tuple>")
         self.obsOp=obsOp
+        self.obsOpTLMAdj=obsOpTLMAdj
         self.obsOpArgs=obsOpArgs
 
         if metric==None:
@@ -190,14 +193,14 @@ class TimeWindowObs(object):
     def __init__(self, d_Obs):
         
         if not isinstance(d_Obs, dict):
-            raise TimeWindowObsError("d_Obs <dict {time:<StaticObs>}>")
+            raise self.TimeWindowObsError("d_Obs <dict {time:<StaticObs>}>")
         for t in d_Obs.keys():
             if not (isinstance(t, (float,int)) 
                     and isinstance(d_Obs[t], StaticObs)):
-                raise TimeWindowObsError(
+                raise self.TimeWindowObsError(
                         "d_Obs <dict {time <float>: <StaticObs>}>")
             if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
-                raise TimeWindowObsError("all obsOp must be the same")
+                raise self.TimeWindowObsError("all obsOp must be the same")
         self.times=np.sort(d_Obs.keys())
         self.tMax=self.times.max()
         self.d_Obs=d_Obs
@@ -209,9 +212,14 @@ class TimeWindowObs(object):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __integrate(self, x, propagator):
+    def __propagatorValidate(self, propagator):
         if not isinstance(propagator, Launcher):
-            raise TimeWindowObsError("propagator <Launcher>")
+            raise self.TimeWindowObsError("propagator <Launcher>")
+
+    #------------------------------------------------------
+
+    def __integrate(self, x, propagator):
+        self.__propagatorValidate(propagator)
         d_xt={}
         t0=0.
         x0=x
@@ -229,8 +237,7 @@ class TimeWindowObs(object):
     #------------------------------------------------------
 
     def modelEquivalent(self, x, propagator):
-        if not isinstance(propagator, Launcher):
-            raise TimeWindowObsError("propagator <Launcher>")
+        self.__propagatorValidate(propagator)
         g=propagator.grid
         d_Hx={}
         d_xt=self.__integrate(x, propagator)
@@ -241,11 +248,9 @@ class TimeWindowObs(object):
     #------------------------------------------------------
     
     def innovation(self, x, propagator):
-        if not isinstance(propagator, Launcher):
-            raise TimeWindowObsError("propagator <Launcher>")
-        g=propagator.grid
+        self.__propagatorValidate(propagator)
         d_inno={}
-        d_Hx=self.modelEquivalent(x, g)
+        d_Hx=self.modelEquivalent(x, propagator)
         for t in self.times:
             d_inno[t]=self.d_Obs[t].values-d_Hx[t]
         return d_inno

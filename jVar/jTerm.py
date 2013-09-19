@@ -92,7 +92,11 @@ class JTerm(object):
 
         #----| Final Gradient test |--------------
         if self.testGrad:
-            self.gradTest(self.x_a)
+            if self.warnFlag==2:
+                print("Gradient and/or function calls not changing:")
+                print(" not performing final gradient test.")
+            else:
+                self.gradTest(self.x_a)
 
         #----| Analysis |-------------------------
         self.analysis=self.x_a
@@ -192,16 +196,28 @@ class PrecondJTerm(JTerm):
         #                                    retall, testAdj, testGrad, 
         #                                    testGradMinPow, testGradMaxPow)
 
+
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __xValidate(self, x):
+        if not isinstance(x, np.ndarray):
+            raise TWObsJTermError("x <numpy.array>")
+        if x.ndim<>1:
+            raise TWObsJTermError("x.ndim==1")
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
     def J(self, x):
+        self.__xValidate(x)
         return 0.5*np.dot(x,x) 
 
     #------------------------------------------------------
 
     def gradJ(self, x):
+        self.__xValidate(x)
         return x
 
 #=====================================================================
