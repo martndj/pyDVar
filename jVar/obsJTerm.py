@@ -15,9 +15,7 @@ class StaticObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, g, obsOpTLMAdj=None, obsOpTLMAdjArgs=(), 
-                    maxiter=100, retall=True, testAdj=False,
-                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+    def __init__(self, obs, g, obsOpTLMAdj=None, obsOpTLMAdjArgs=()): 
 
         if not isinstance(obs, StaticObs):
             raise StaticObsJTermError("obs <SaticObs>")
@@ -36,13 +34,6 @@ class StaticObsJTerm(JTerm):
 
         self.args=()
         
-        self.maxiter=maxiter
-        self.retall=retall
-        self.testAdj=testAdj
-        self.testGrad=testGrad
-        self.testGradMinPow=-1
-        self.testGradMaxPow=-14
-
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
@@ -91,13 +82,12 @@ class TWObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm, 
-                    maxiter=100, retall=True, testAdj=False,
-                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+    def __init__(self, obs, nlModel, tlm): 
 
         if not isinstance(obs, TimeWindowObs):
             raise self.TWObsJTermError("obs <TimeWindowObs>")
         self.obs=obs
+        self.nObs=self.obs.nObs
 
         if not (isinstance(nlModel,Launcher) or nlModel==None):
             raise self.TWObsJTermError("nlModel <Launcher | None>")
@@ -113,13 +103,6 @@ class TWObsJTerm(JTerm):
 
         self.args=()
         
-        self.maxiter=maxiter
-        self.retall=retall
-        self.testAdj=testAdj
-        self.testGrad=testGrad
-        self.testGradMinPow=-1
-        self.testGradMaxPow=-14
-
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
@@ -163,7 +146,7 @@ class TWObsJTerm(JTerm):
         MAdjObs=np.zeros(self.nlModel.grid.N)
         for t in self.obs.times[::-1]:
             i+=1
-            if i<len(self.obs.times):
+            if i<self.nObs:
                 t_pre=self.obs.times[-1-i]
             else:
                 t_pre=0.
@@ -171,10 +154,11 @@ class TWObsJTerm(JTerm):
             if self.obs[t].obsOpTLMAdj==None:
                 w=d_NormInno[t]
             else:   
-                w=self.obs[t].obsOpTLMAdj(d_NormInno[t],
-                                        *self.obs[t].obsOpArgs)
+                w=self.obs[t].obsOpTLMAdj(d_NormInno[t], 
+                                            self.nlModel.grid,
+                                            self.obs[t].coord,
+                                            *self.obs[t].obsOpArgs)
 
-            #print(t, t_pre, t-t_pre)
             MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
             w=MAdjObs
         
@@ -190,7 +174,7 @@ if __name__=='__main__':
     import matplotlib.pyplot as plt
     from observations import degrad, pos2Idx, obsOp_Coord
     import pyKdV as kdv
-    from jTerm import PrecondJTerm
+    from jTerm import TrivialJTerm
     
     Ntrc=100
     L=300.

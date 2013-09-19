@@ -73,13 +73,15 @@ class StaticObs(object):
     """
     StaticObs class
 
-    StaticObs(coord, values, obsOp, obsOpArgs=())
+    StaticObs(coord, values, obsOp, obsOpTLMAdj, obsOpArgs=())
         coord       :   observation positions
                             <pseudoSpec1D.SpectralGrid | numpy.ndarray>
                             (SpectralGrid for continuous observations)
         values      :   observation values <numpy.ndarray>
         obsOp       :   static observation operator <function | None>
-                            (None when observation space = model space)
+        obsOpTLMAdj :   static observation TLM adjoint <function | None>
+                            (both None when observation space = 
+                             model space)
         obsOpArgs   :   obsOp additional arguments
                             obsOp(x_state, x_grid, x_obsSpaceCoord, 
                                     *obsOpArgs)
@@ -204,6 +206,7 @@ class TimeWindowObs(object):
         self.times=np.sort(d_Obs.keys())
         self.tMax=self.times.max()
         self.d_Obs=d_Obs
+        self.nObs=len(d_Obs)
         self.obsOp=d_Obs[d_Obs.keys()[0]].obsOp
         self.obsOpArgs=d_Obs[d_Obs.keys()[0]].obsOpArgs
 

@@ -24,9 +24,7 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, costFunc, gradCostFunc, args=(), 
-                    maxiter=100, retall=True, testAdj=False,
-                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+    def __init__(self, costFunc, gradCostFunc, args=()):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
@@ -38,12 +36,6 @@ class JTerm(object):
             raise self.JTermError("args <tuple>")
         self.args=args
 
-        self.maxiter=maxiter
-        self.retall=retall
-        self.testAdj=testAdj
-        self.testGrad=testGrad
-        self.testGradMinPow=-1
-        self.testGradMaxPow=-14
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -58,21 +50,25 @@ class JTerm(object):
 
     #------------------------------------------------------
 
-    def minimize(self, x_fGuess):
+    def minimize(self, x_fGuess, 
+                    maxiter=50, retall=True,
+                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+
         if x_fGuess.dtype<>'float64':
             raise JTermError("x_fGuess.dtype=='float64'")
         #----| Gradient test |--------------------
-        if self.testGrad:
-            self.gradTest(x_fGuess)
+        if testGrad:
+            self.gradTest(x_fGuess,
+                            powRange=[testGradMinPow, testGradMaxPow])
 
         #----| Minimizing |-----------------------
         self.minimize=sciOpt.fmin_bfgs
         minimizeReturn=self.minimize(self.J, x_fGuess, args=self.args,
                                         fprime=self.gradJ,  
-                                        maxiter=self.maxiter,
-                                        retall=self.retall,
+                                        maxiter=maxiter,
+                                        retall=retall,
                                         full_output=True)
-        self.x_a=minimizeReturn[0]
+        self.analysis=minimizeReturn[0]
         self.fOpt=minimizeReturn[1]
         self.gOpt=minimizeReturn[2]
         self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
@@ -80,19 +76,18 @@ class JTerm(object):
         self.fCalls=minimizeReturn[4]
         self.gCalls=minimizeReturn[5]
         self.warnFlag=minimizeReturn[6]
-        if self.retall:
+        if retall:
             self.allvecs=minimizeReturn[7]
 
         #----| Final Gradient test |--------------
-        if self.testGrad:
+        if testGrad:
             if self.warnFlag==2:
                 print("Gradient and/or function calls not changing:")
                 print(" not performing final gradient test.")
             else:
-                self.gradTest(self.x_a)
+                self.gradTest(self.analysis,
+                            powRange=[testGradMinPow, testGradMaxPow])
 
-        #----| Analysis |-------------------------
-        self.analysis=self.x_a
 
 
     #------------------------------------------------------
@@ -106,16 +101,7 @@ class JTerm(object):
         def gradCFSum(x):
             return self.gradJ(x)+J2.gradJ(x)
 
-        JSum=JTerm(CFSum, gradCFSum,
-                    maxiter=max(self.maxiter, J2.maxiter),
-                    retall=(self.retall or J2.retall),
-                    testAdj=(self.testAdj or J2.testAdj),
-                    testGrad=(self.testGrad or J2.testGrad),
-                    testGradMinPow=max(self.testGradMinPow,
-                                        J2.testGradMinPow),
-                    testGradMaxPow=min(self.testGradMaxPow,
-                                        J2.testGradMaxPow),
-                    )
+        JSum=JTerm(CFSum, gradCFSum)
         return JSum
 
     #------------------------------------------------------
@@ -129,20 +115,15 @@ class JTerm(object):
         def gradCFMult(x):
             return self.gradJ(x)*scalar
 
-        JMult=JTerm(CFMult, gradCFMult,
-                    maxiter=self.maxiter, retall=self.retall,
-                    testAdj=self.testAdj, testGrad=self.testGrad,
-                    testGradMinPow=self.testGradMinPow,
-                    testGradMaxPow=self.testGradMaxPow
-                    )
+        JMult=JTerm(CFMult, gradCFMult)
         return JMult
     #------------------------------------------------------
 
-    def gradTest(self, x, output=True):
+    def gradTest(self, x, output=True, powRange=[-1,-14]):
         J0=self.J(x)
         gradJ0=self.gradJ(x)
         test={}
-        for power in xrange(self.testGradMinPow, self.testGradMaxPow, -1):
+        for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
             Jeps=self.J(x-eps*gradJ0)
             
@@ -174,21 +155,9 @@ class TrivialJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, maxiter=100, retall=True, testAdj=False,
-                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+    def __init__(self):
 
         self.args=()
-
-        self.maxiter=maxiter
-        self.retall=retall
-        self.testAdj=testAdj
-        self.testGrad=testGrad
-        self.testGradMinPow=-1
-        self.testGradMaxPow=-14
-        #super(TrivialJTerm, self).__configure(maxiter,
-        #                                    retall, testAdj, testGrad, 
-        #                                    testGradMinPow, testGradMaxPow)
-
 
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -228,7 +197,7 @@ if __name__=='__main__':
     print(x)
     J1.minimize(x)
     print("Analysis:")
-    print(J1.x_a)
+    print(J1.analysis)
 
 
     J2=TrivialJTerm()
@@ -238,5 +207,5 @@ if __name__=='__main__':
     JSum=J1+(J2*.5)
     JSum.minimize(x)
     print("Analysis:")
-    print(JSum.x_a)
+    print(JSum.analysis)
 
