@@ -156,7 +156,7 @@ class StaticObs(object):
     #------------------------------------------------------
     
     def innovation(self, x, g):
-        return self.yValue-self.modelEquivalent(x, g)
+        return self.values-self.modelEquivalent(x, g)
 
     #------------------------------------------------------
 
