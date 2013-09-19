@@ -10,7 +10,11 @@ class JTerm(object):
 
         costFunc, gradCostFunc(x, *args)
 
-        JTerms can be summed :  JSum=((J1+J2)+J3)+...
+        <!> This is a master class not meant to be instantiated, only
+            subclasses should.
+
+        JTerms (and sub classes) can be summed :  JSum=((J1+J2)+J3)+...
+        JTerms (and sub classes) can be scaled :  JMult=J1*.5
     """
 
     class JTermError(Exception):
@@ -102,7 +106,6 @@ class JTerm(object):
 
         def CFSum(x):
             return self.J(x)+J2.J(x)
-
         def gradCFSum(x):
             return self.gradJ(x)+J2.gradJ(x)
 
@@ -118,7 +121,24 @@ class JTerm(object):
                     )
         return JSum
 
+    #------------------------------------------------------
 
+    def __mul__(self, scalar):
+        if not isinstance(scalar,float):
+            raise self.JTermError("scalar <float>")
+
+        def CFMult(x):
+            return self.J(x)*scalar
+        def gradCFMult(x):
+            return self.gradJ(x)*scalar
+
+        JMult=JTerm(CFMult, gradCFMult,
+                    maxiter=self.maxiter, retall=self.retall,
+                    testAdj=self.testAdj, testGrad=self.testGrad,
+                    testGradMinPow=self.testGradMinPow,
+                    testGradMaxPow=self.testGradMaxPow
+                    )
+        return JMult
     #------------------------------------------------------
 
     def gradTest(self, x, output=True):
@@ -206,7 +226,7 @@ if __name__=='__main__':
     print("\n\n====| Two terms cost function |====")
     print("First Guess:")
     print(x)
-    JSum=J1+J2
+    JSum=J1+(J2*.5)
     JSum.minimize(x)
     print("Analysis:")
     print(JSum.x_a)
