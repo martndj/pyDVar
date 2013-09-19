@@ -1,10 +1,16 @@
 import numpy as np
-from pseudoSpec1D import SpectralGrid, Trajectory, Launcher, TLMLauncher
+import scipy.optimize as sciOpt
+
 
 class JTerm(object):
     """
-        Nuclear cost function term for assimilating an information type
+    JTerm(costFunc, gradCostFunc, args=(), 
+            maxiter=100, retall=True, testAdj=False,
+            testGrad=True, testGradMinPow=-1, testGradMaxPow=-14)
 
+        costFunc, gradCostFunc(x, *args)
+
+        JTerms can be summed :  JSum=((J1+J2)+J3)+...
     """
 
     class JTermError(Exception):
@@ -14,64 +20,194 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, tWObs, nlModel, tlm, 
-                    obsOpTLAdj, obsOpTLAdjArgs=(),
-                    maxiter=100, testAdj=True, testGrad=True):
+    def __init__(self, costFunc, gradCostFunc, args=(), 
+                    maxiter=100, retall=True, testAdj=False,
+                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
         
-        if not isinstance(tWObs, TimeWindowObs):
-            raise JTermError("tWObs <TimeWindowObs>")
-        self.obs=tWObs
-        self.times=tWObs.times
+        if not (callable(costFunc) and callable(gradCostFunc)):
+            raise self.JTermError("costFunc, gardCostFunc <function>")
 
-        if not (isinstance(nlModel,Launcher) or nlModel==None):
-            raise self.JTermError("nlModel <Launcher | None>")
-        if not (isinstance(tlm, TLMLauncher) or tlm==None):
-            raise self.JTermError("tlm <TLMLauncher | None>")        
-        if (tlm==None or nlModel==None)and self.times<>np.zeros(1):
-            raise slef.JTermError("tlm|nlModel==None <=> self.times=[0.]")
-        self.nlModel=nlModel
-        self.tlm=tlm
+        self.__costFunc=costFunc
+        self.__gradCostFunc=gradCostFunc
+
+        if not isinstance(args,tuple):
+            raise self.JTermError("args <tuple>")
+        self.args=args
+
+        self.__configure(maxiter, retall, testAdj, testGrad, 
+                            testGradMinPow, testGradMaxPow)
+
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __configure(self, maxiter, retall, testAdj, testGrad, 
+                            testGradMinPow, testGradMaxPow):
+        self.maxiter=maxiter
+        self.retall=retall
+        self.testAdj=testAdj
+        self.testGrad=testGrad
+        self.testGradMinPow=-1
+        self.testGradMaxPow=-14
+    #------------------------------------------------------
+    #----| Public methods |--------------------------------
+    #------------------------------------------------------
+
+    def J(self, x):
+        return self.__costFunc(x,*self.args) 
+
+    #------------------------------------------------------
+
+    def gradJ(self, x):
+        return self.__gradCostFunc(x, *self.args)
+
+    #------------------------------------------------------
+
+    def minimize(self, x_fGuess):
         
-        if not (callable(obsOpTLAdj) or obsOpTLAdj==None):
-            raise self.JTermError("obsOpTLAdj <function | None>")
-        if not isinstance(obsOpTLAdjArgs, tuple):
-            raise self.JTermError("obsOpTLAdjArgs <tuple>")
-        self.obsOp=tWObs.obsOp
-        self.obsOpArgs=tWObs.obsOpArgs
-        self.obsOpTLAdj=obsOpTLAdj
-        self.obsOpTLAdjArgs=obsOpTLAdjArgs
+        #----| Gradient test |--------------------
+        if self.testGrad:
+            self.gradTest(x_fGuess)
+
+        #----| Minimizing |-----------------------
+        self.minimize=sciOpt.fmin_bfgs
+        minimizeReturn=self.minimize(self.J, x_fGuess, args=self.args,
+                                        fprime=self.gradJ,  
+                                        maxiter=self.maxiter,
+                                        retall=self.retall,
+                                        full_output=True)
+        self.x_a=minimizeReturn[0]
+        self.fOpt=minimizeReturn[1]
+        self.gOpt=minimizeReturn[2]
+        self.hInvOpt=minimizeReturn[3]
+        self.fCalls=minimizeReturn[4]
+        self.gCalls=minimizeReturn[5]
+        self.warnFlag=minimizeReturn[6]
+        if self.retall:
+            self.allvecs=minimizeReturn[7]
+
+        #----| Final Gradient test |--------------
+        if self.testGrad:
+            self.gradTest(self.x_a)
+
+        #----| Analysis |-------------------------
+        self.analysis=self.x_a
+
+
+    #------------------------------------------------------
+
+    def __add__(self, J2):
+        if not isinstance(J2, JTerm):
+            raise self.JTermError("J1,J2 <JTerm>")
+
+        def CFSum(x):
+            return self.J(x)+J2.J(x)
+
+        def gradCFSum(x):
+            return self.gradJ(x)+J2.gradJ(x)
+
+        JSum=JTerm(CFSum, gradCFSum,
+                    maxiter=max(self.maxiter, J2.maxiter),
+                    retall=(self.retall or J2.retall),
+                    testAdj=(self.testAdj or J2.testAdj),
+                    testGrad=(self.testGrad or J2.testGrad),
+                    testGradMinPow=max(self.testGradMinPow,
+                                        J2.testGradMinPow),
+                    testGradMaxPow=min(self.testGradMaxPow,
+                                        J2.testGradMaxPow),
+                    )
+        return JSum
+
+
+    #------------------------------------------------------
+
+    def gradTest(self, x, output=True):
+        J0=self.J(x)
+        gradJ0=self.gradJ(x)
+        test={}
+        for power in xrange(self.testGradMinPow, self.testGradMaxPow, -1):
+            eps=10.**(power)
+            Jeps=self.J(x-eps*gradJ0)
+            
+            n2GradJ0=np.dot(gradJ0, gradJ0)
+            res=((J0-Jeps)/(eps*n2GradJ0))
+            test[power]=[Jeps, res]
+
+        if output:
+            print("----| Gradient test |------------------")
+            print("  J0      =%+25.15f"%J0)
+            print(" |grad|^2 =%+25.15f"%n2GradJ0)
+            for i in  (np.sort(test.keys())[::-1]):
+                print("%4d %+25.15f  %+25.15f"%(i, test[i][0], test[i][1]))
+
+        return (J0, n2GradJ0, test)
+
+
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
+
+class PrecondJTerm(JTerm):
+    
+    class PrecondJTermError(Exception):
+        pass
+
+
+    #------------------------------------------------------
+    #----| Init |------------------------------------------
+    #------------------------------------------------------
+
+    def __init__(self, maxiter=100, retall=True, testAdj=False,
+                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+
+        self.args=()
+
+        self.maxiter=maxiter
+        self.retall=retall
+        self.testAdj=testAdj
+        self.testGrad=testGrad
+        self.testGradMinPow=-1
+        self.testGradMaxPow=-14
+        #super(PrecondJTerm, self).__configure(maxiter,
+        #                                    retall, testAdj, testGrad, 
+        #                                    testGradMinPow, testGradMaxPow)
 
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, g):
-        d_inno=self.obs.innovation(x, sel.nlModel)
-        J=0.
-        for t in self.times:
-            innoNorm=np.dot(self.obs[t].metric, d_inno[t])
-            J+=0.5*np.dot(d_inno[t],innoNorm)
+    def J(self, x):
+        return 0.5*np.dot(x,x) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x, g):
-        d_inno=self.obs.innovation(x, self.nlModel)
-        d_innoNorm={}
-        for t in self.times:
-            d_innoNorm[t]=np.dot(self.obs[t].metric, d_inno[t])
+    def gradJ(self, x):
+        return x
 
-        tInt=np.max(self.times)
-        traj_x=self.nlModel.integrate(x, tInt)
-        self.tlm.initialize(traj_x)
-
-        dx0=self.obsOpTLAdj(d_innoNorm, tlm, *self.obsOpTLAdjArgs)
-        return 
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
 
 
-        
-            
+if __name__=='__main__':
 
-            
+    J1=PrecondJTerm()
+    x=np.ones(10)
+    
+    print("====| Simple cost function |=======")
+    print("First Guess:")
+    print(x)
+    J1.minimize(x)
+    print("Analysis:")
+    print(J1.x_a)
 
-        
-        
+
+    J2=PrecondJTerm()
+    print("\n\n====| Two terms cost function |====")
+    print("First Guess:")
+    print(x)
+    JSum=J1+J2
+    JSum.minimize(x)
+    print("Analysis:")
+    print(JSum.x_a)
+
