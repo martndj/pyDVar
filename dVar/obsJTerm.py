@@ -1,11 +1,16 @@
 from jTerm import JTerm
 from observations import StaticObs, TimeWindowObs
-from pseudoSpec1D import SpectralGrid, Launcher, TLMLauncher
+from pseudoSpec1D import PeriodicGrid, Launcher, TLMLauncher
 import numpy as np
 
 class StaticObsJTerm(JTerm):
     """
+    Static observations JTerm subclass
 
+    StaticObsJTerm(obs, g)
+
+        obs             :   <StaticObs>
+        g               :   <PeriodicGrid>
     """
     class StaticObsJTermError(Exception):
         pass
@@ -15,22 +20,18 @@ class StaticObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, g, obsOpTLMAdj=None, obsOpTLMAdjArgs=()): 
+    def __init__(self, obs, g): 
 
         if not isinstance(obs, StaticObs):
             raise StaticObsJTermError("obs <SaticObs>")
         self.obs=obs
 
-        if not isinstance(g, SpectralGrid):
-            raise StaticObsJTermError("g <pseudoSpec1D.SpectralGrid>")
+        if not isinstance(g, PeriodicGrid):
+            raise StaticObsJTermError("g <pseudoSpec1D.PeriodicGrid>")
         self.modelGrid=g
 
-        if not ((callable(obsOpTLMAdj) or obsOpTLMAdj==None)
-                and isinstance(obsOpTLMAdjArgs, tuple)):
-            raise StaticObsJTermError(
-                "obsOpTLMAdj <function | None>, obsOpTLMAdjArgs <tuple>")
-        self.obsOpTLMAdj=obsOpTLMAdj
-        self.obsOpTLMAdjArgs=obsOpTLMAdjArgs
+        self.obsOpTLMAdj=self.obs.obsOpTLMAdj
+        self.obsOpTLMAdjArgs=self.obs.obsOpArgs
 
         self.args=()
         
@@ -45,7 +46,7 @@ class StaticObsJTerm(JTerm):
             raise self.TWObsJTermError("x.dtype=='float64'")
         if x.ndim<>1:
             raise self.TWObsJTermError("x.ndim==1")
-        if len(x)<>self.nlModel.grid.N:
+        if len(x)<>self.modelGrid.N:
             raise self.TWObsJTermError("len(x)==self.nlModel.grid.N")
 
     #------------------------------------------------------
@@ -53,26 +54,36 @@ class StaticObsJTerm(JTerm):
     #------------------------------------------------------
 
     def J(self, x): 
+        self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         return 0.5*np.dot(inno, np.dot(self.obs.metric, inno)) 
 
     #------------------------------------------------------
 
     def gradJ(self, x):
+        self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
             return -np.dot(self.obs.metric, inno)
         else:
-            return -self.obsOpTLMAdj(np.dot(self.obs.metric, inno), 
-                                *obs.obsOpTLMAdjArgs)
+            return -self.obsOpTLMAdj(np.dot(self.obs.metric, inno),
+                                            self.modelGrid,
+                                            self.obs.coord,
+                                            *self.obsOpTLMAdjArgs)
 
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
 
 class TWObsJTerm(JTerm):
-    """
+    """    
+    Time window observations JTerm subclass
 
+    TWObsJTerm(obs, nlModel, tlm)
+
+        obs             :   <StaticObs>
+        nlModel         :   propagator model <Launcher>
+        tlm             :   tangean linear model <TLMLauncher>
     """
     
     class TWObsJTermError(Exception):
@@ -89,13 +100,12 @@ class TWObsJTerm(JTerm):
         self.obs=obs
         self.nObs=self.obs.nObs
 
-        if not (isinstance(nlModel,Launcher) or nlModel==None):
-            raise self.TWObsJTermError("nlModel <Launcher | None>")
-        if not (isinstance(tlm, TLMLauncher) or tlm==None):
-            raise self.TWObsJTermError("tlm <TLMLauncher | None>")        
-        if (tlm==None or nlModel==None)and self.times<>np.zeros(1):
-            raise slef.TWObsJTermError(
-                                "tlm|nlModel==None <=> self.times=[0.]")
+        if not (isinstance(nlModel,Launcher)):
+            raise self.TWObsJTermError("nlModel <Launcher>")
+        if not (isinstance(tlm, TLMLauncher)):
+            raise self.TWObsJTermError("tlm <TLMLauncher>")        
+        if not (nlModel.param==tlm.param):
+            raise self.TWObsJTermError("nlModel.param==tlm.param")
         self.nlModel=nlModel
         self.tlm=tlm
         self.modelGrid=nlModel.grid
@@ -172,13 +182,13 @@ class TWObsJTerm(JTerm):
 if __name__=='__main__':
 
     import matplotlib.pyplot as plt
-    from observations import degrad, pos2Idx, obsOp_Coord
+    from observations import degrad, pos2Idx, obsOp_Coord, obsOp_Coord_Adj
     import pyKdV as kdv
     from jTerm import TrivialJTerm
     
     Ntrc=100
     L=300.
-    g=SpectralGrid(Ntrc, L)
+    g=PeriodicGrid(Ntrc, L)
     
 
     rndLFBase=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
@@ -188,26 +198,33 @@ if __name__=='__main__':
     x0_degrad=degrad(x0_truth, 0., 0.3)
     x0_bkg=np.zeros(g.N)
 
-#    print("=======================================================")
-#    print("----| Static obs |-------------------------------------")
-#    print("=======================================================")
-#    obs1=StaticObs(g, x0_truth)
-#    JObs=StaticObsJTerm(obs1, g) 
-#    
-#    #----| First test: only degrated first guess
-#    JObs.minimize(x0_degrad)
-#
-#    #----| Second test: with null background term
-#    #   the background term will constraint toward 0
-#    Jbkg=PrecondJTerm()
-#    JSum=JObs+Jbkg*3.
-#    JSum.minimize(x0_degrad)
-#    
-#    plt.figure()
-#    plt.plot(g.x, x0_truth, 'k', linewidth=2)
-#    plt.plot(g.x, x0_degrad, 'b')
-#    plt.plot(g.x, JObs.analysis, 'g')
-#    plt.plot(g.x, JSum.analysis, 'r')
+    print("=======================================================")
+    print("----| Static obs |-------------------------------------")
+    print("=======================================================")
+    obs1=StaticObs(g, x0_truth)
+    obs2Pos=np.array([-50.,0., 50.])
+    obs2=StaticObs(obs2Pos, x0_truth[pos2Idx(g, obs2Pos)],
+                    obsOp_Coord, obsOp_Coord_Adj)
+    JObs1=StaticObsJTerm(obs1, g) 
+    JObs2=StaticObsJTerm(obs2, g) 
+    
+    #----| First test: only degrated first guess
+    JObs1.minimize(x0_degrad)
+    JObs2.minimize(x0_degrad)
+
+    #----| Second test: with null background term
+    #   the background term will constraint toward 0
+    Jbkg=TrivialJTerm()
+    JSum=JObs1+Jbkg*3.
+    JSum.minimize(x0_degrad)
+    
+    plt.figure()
+    plt.plot(g.x, x0_truth, 'k', linewidth=2)
+    plt.plot(g.x, x0_degrad, 'b')
+    plt.plot(g.x, JObs1.analysis, 'g')
+    plt.plot(g.x, JObs2.analysis, 'm')
+    plt.plot(JObs2.obs.interpolate(g), JObs2.obs.values, 'mo')
+    plt.plot(g.x, JSum.analysis, 'r')
     
     print("\n\n=======================================================")
     print("----| Dynamic obs |------------------------------------")

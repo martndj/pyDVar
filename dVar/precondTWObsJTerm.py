@@ -1,11 +1,38 @@
-#from jTerm import JTerm
 from observations import StaticObs, TimeWindowObs
 from obsJTerm import TWObsJTerm
 import numpy as np
 
 class PrecondTWObsJTerm(TWObsJTerm):
     """
+    Preconditionned time window observations JTerm subclass
 
+    PrecondTWObsJTerm(obs, nlModel, tlm
+                        x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=())
+
+        obs             :   <StaticObs>
+        nlModel         :   propagator model <Launcher>
+        tlm             :   tangean linear model <TLMLauncher>
+        x_bkg           :   background state <numpy.ndarray>
+        B_sqrt          :   preconditionning operator <function>
+        B_sqrtAdj       :   adjoint of preconditionning op. <function>
+        B_sqrtArgs      :   arguments <tuple>
+                                
+    The purpose of this class is to facilitate the convergence of a cost
+    function of the form:
+        
+        J(x)= 0.5*(x-x_bkg)'B^{-1}(x-x_bkg) + 0.5*(y-H(x))'R{-1}(y-H(x))
+
+    by operating a variable change:
+        
+        xi=B^{-1/2}(x-x_bkg)
+
+    so that the cost function is now in term of xi:
+        
+        J(xi)= xi'xi + 0.5*(y-H(x))'R{-1}(y-H(x))
+        x=B^{1/2}xi+x_b
+
+    Using PrecondTWObsJTerm() we can represent the background term with
+    TrivialJTerm() and sum them.
     """
     
     class PrecondTWObsJTermError(Exception):
@@ -85,14 +112,14 @@ if __name__=='__main__':
                                     rCTilde_sqrt_isoHomo
     import pyKdV as kdv
     from jTerm import TrivialJTerm
-    from pseudoSpec1D import SpectralGrid 
+    from pseudoSpec1D import PeriodicGrid 
     
     Ntrc=100
     L=300.
-    g=SpectralGrid(Ntrc, L)
+    g=PeriodicGrid(Ntrc, L)
     
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=3.
+    tInt=15.
     maxA=4.
 
     model=kdv.kdvLauncher(kdvParam, maxA)
@@ -135,7 +162,9 @@ if __name__=='__main__':
     #   x=B_sqrt(xi)+x_bkg
     Jxi=TrivialJTerm()
     J=Jxi+JPTWObs*0.1
-    #J=JPTWObs*0.01
+    # the scaling compensate the huge number of observations making
+    # JPTWObs >> Jxi 
+
     J.minimize(x0_bkg)
     x0_a=B_sqrt_op(J.analysis, *B_sqrtArgs)+x0_bkg
     x_a=model.integrate(x0_a,  tInt)

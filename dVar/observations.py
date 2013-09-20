@@ -1,5 +1,5 @@
 import numpy as np
-from pseudoSpec1D import SpectralGrid, Launcher
+from pseudoSpec1D import PeriodicGrid, Launcher
 import random as rnd
 
 #-----------------------------------------------------------
@@ -55,8 +55,7 @@ def obsOp_Coord(x, g, obsCoord):
 
 def obsOp_Coord_Adj(obs, g, obsCoord):
     """
-    Trivial static observation operator
-    Adjoint
+    Trivial static observation operator adjoint
     """
     idxObs=pos2Idx(g, obsCoord)
     nObs=len(idxObs)
@@ -75,8 +74,8 @@ class StaticObs(object):
 
     StaticObs(coord, values, obsOp, obsOpTLMAdj, obsOpArgs=())
         coord       :   observation positions
-                            <pseudoSpec1D.SpectralGrid | numpy.ndarray>
-                            (SpectralGrid for continuous observations)
+                            <pseudoSpec1D.PeriodicGrid | numpy.ndarray>
+                            (PeriodicGrid for continuous observations)
         values      :   observation values <numpy.ndarray>
         obsOp       :   static observation operator <function | None>
         obsOpTLMAdj :   static observation TLM adjoint <function | None>
@@ -97,7 +96,7 @@ class StaticObs(object):
     def __init__(self, coord, values, obsOp=None, obsOpTLMAdj=None,
                     obsOpArgs=(), metric=None):
 
-        if isinstance(coord, SpectralGrid):
+        if isinstance(coord, PeriodicGrid):
             self.coord=coord.x
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
@@ -107,7 +106,7 @@ class StaticObs(object):
             self.nObs=len(coord)
         else:
             raise self.StaticObsError(
-                "coord <pseudoSpec1D.SpectralGrid | numpy.ndarray>")
+                "coord <pseudoSpec1D.PeriodicGrid | numpy.ndarray>")
 
         if not isinstance(values, np.ndarray):
             raise self.StaticObsError("coord <numpy.ndarray>")
@@ -272,12 +271,12 @@ class TimeWindowObs(object):
 if __name__=="__main__":
     import matplotlib.pyplot as plt
     import pyKdV as kdv
-    from pseudoSpec1D import SpectralGrid
+    from pseudoSpec1D import PeriodicGrid
     
     #----| Static obs |---------------------------    
     Ntrc=100
     L=300.
-    g=SpectralGrid(Ntrc, L)
+    g=PeriodicGrid(Ntrc, L)
         
 
     x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)

@@ -4,9 +4,7 @@ import scipy.optimize as sciOpt
 
 class JTerm(object):
     """
-    JTerm(costFunc, gradCostFunc, args=(), 
-            maxiter=100, retall=True, testAdj=False,
-            testGrad=True, testGradMinPow=-1, testGradMaxPow=-14)
+    JTerm(costFunc, gradCostFunc, args=()) 
 
         costFunc, gradCostFunc(x, *args)
 

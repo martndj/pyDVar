@@ -37,9 +37,7 @@ def r2c_Adj(csp):
     rsp=np.zeros(N+1)
     for i in xrange(1, N/2+1):
         rsp[2*i-1]  =csp[i].real
-        #rsp[2*i]    =-csp[i].imag
         rsp[2*i]    =csp[i].imag
-        # attention, le produit dans l'espace complexe
-        # demande la conjugaison
+        # <!> carefull here: complex conjugate necessary!
     rsp[0]=csp[0].real
     return rsp
