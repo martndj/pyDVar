@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.optimize as sciOpt
-
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.gridspec import GridSpec
 
 class JTerm(object):
     """
@@ -120,12 +122,13 @@ class JTerm(object):
     def gradTest(self, x, output=True, powRange=[-1,-14]):
         J0=self.J(x)
         gradJ0=self.gradJ(x)
+        n2GradJ0=np.dot(gradJ0, gradJ0)
+
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
             Jeps=self.J(x-eps*gradJ0)
             
-            n2GradJ0=np.dot(gradJ0, gradJ0)
             res=((J0-Jeps)/(eps*n2GradJ0))
             test[power]=[Jeps, res]
 
@@ -138,6 +141,33 @@ class JTerm(object):
 
         return (J0, n2GradJ0, test)
 
+    #------------------------------------------------------
+
+    def plotCostFunc(self, x, epsMin=-1., epsMax=1., nDx=10, axe=None):
+        axe=self._checkAxe(axe) 
+        
+        dx=(epsMax-epsMin)/nDx
+        J=np.zeros(nDx)
+        xPlusDx=np.linspace(epsMin, epsMax, nDx)
+        grad=self.gradJ(x)
+        for i in xrange(nDx):
+            alpha=epsMin+i*dx
+            J[i]=self.J(x+alpha*grad)
+        axe.plot(xPlusDx,J, '^-')
+        return xPlusDx, J
+            
+    
+    #-------------------------------------------------------
+    #----| Private plotting methods |-----------------------
+    #-------------------------------------------------------
+
+    def _checkAxe(self, axe):
+        if axe==None:
+            axe=plt.subplot(111)
+        elif not (isinstance(axe,(Axes, GridSpec))):
+            raise self.JTermError(
+            "axe < matplotlib.axes.Axes | matplotlib.gridspec.GridSpec >")
+        return axe
 
 #=====================================================================
 #---------------------------------------------------------------------

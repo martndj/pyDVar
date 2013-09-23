@@ -186,13 +186,14 @@ if __name__=='__main__':
     import pyKdV as kdv
     from jTerm import TrivialJTerm
     
-    Ntrc=100
+    minimize=False
+    Ntrc=120
     L=300.
     g=PeriodicGrid(Ntrc, L)
     
 
-    rndLFBase=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
-    soliton=kdv.soliton(g.x, 0., amp=1.3, beta=1., gamma=-1)
+    rndLFBase=kdv.rndFiltVec(g, Ntrc=g.Ntrc/4)
+    soliton=kdv.soliton(g.x, 0., amp=2., beta=1., gamma=-1)
 
     x0_truth=soliton
     x0_degrad=degrad(x0_truth, 0., 0.3)
@@ -230,12 +231,13 @@ if __name__=='__main__':
     print("----| Dynamic obs |------------------------------------")
     print("=======================================================")
     def gaussProfile(x):
-        return 0.03*kdv.gauss(x, 40., 20. )\
-                -0.02*kdv.gauss(x, -20., 14. )
+        x0=0.
+        sig=5.
+        return -0.1*np.exp(-((x-x0)**2)/(2*sig**2))
 
-    kdvParam=kdv.Param(g, beta=1., gamma=-1., rho=gaussProfile)
-    tInt=20.
-    maxA=2.
+    kdvParam=kdv.Param(g, beta=1., gamma=-1.)
+    tInt=30.
+    maxA=4.
     maxiter=50
     
     model=kdv.kdvLauncher(kdvParam, maxA)
@@ -252,8 +254,9 @@ if __name__=='__main__':
     timeObs1=TimeWindowObs(d_Obs1)
 
     JTWObs=TWObsJTerm(timeObs1, model, tlm) 
-    JTWObs.minimize(x0_bkg)
-    x_a=model.integrate(JTWObs.analysis, tInt)
+    if minimize:
+        JTWObs.minimize(x0_bkg)
+        x_a=model.integrate(JTWObs.analysis, tInt)
 
     plt.figure()
     i=0
@@ -262,6 +265,7 @@ if __name__=='__main__':
         sub=plt.subplot(nObsTime, 1, i)
         sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
         sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
-        sub.plot(g.x, x_a.whereTime(t), 'r')
+        if minimize:
+            sub.plot(g.x, x_a.whereTime(t), 'r')
         sub.set_title("t=%.2f"%t)
     plt.show()
