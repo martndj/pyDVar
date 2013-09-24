@@ -229,7 +229,7 @@ class TimeWindowObs(object):
             if t==0.:
                 d_xt[t]=x0
             else:
-                d_xt[t]=(propagator.integrate(x0,t-t0)).final()    
+                d_xt[t]=(propagator.integrate(x0,t-t0)).final    
             x0=d_xt[t]
             t0=t
         

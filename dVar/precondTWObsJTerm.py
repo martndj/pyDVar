@@ -190,9 +190,9 @@ if __name__=='__main__':
     sub.plot(g.x, x0_truth, 'k--')
     sub.plot(g.x, x0_bkg, 'b--')
     sub.plot(g.x, x0_a, 'r--')
-    sub.plot(g.x, x_truth.final(), 'k')
-    sub.plot(g.x, x_bkg.final(), 'b')
-    sub.plot(g.x, x_a.final(), 'r')
+    sub.plot(g.x, x_truth.final, 'k')
+    sub.plot(g.x, x_bkg.final, 'b')
+    sub.plot(g.x, x_a.final, 'r')
     sub.legend(["${x_t}_0$","${x_b}_0$","${x_a}_0$",
                 "${x_t}_f$","${x_b}_f$","${x_a}_f$"], loc='best')
     plt.show()
