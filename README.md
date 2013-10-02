@@ -46,6 +46,7 @@ Installation informations
  3. Link the data assimilation lab with a 1+1D model.  Here is an example using [pyfKdV](https://github.com/martndj/pyfKdV):
 
         git clone https://github.com/martndj/pyfKdV.git
+        git checkout v0.9.1
 
     Follow the installation instruction, and then try this script-experiment:
 

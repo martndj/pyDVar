@@ -58,6 +58,7 @@ class PrecondTWObsJTerm(TWObsJTerm):
         self.__xValidate(x_bkg)
         self.x_bkg=x_bkg
 
+        self.isMinimized=False
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
@@ -100,6 +101,26 @@ class PrecondTWObsJTerm(TWObsJTerm):
                                                 testGradMaxPow)
         self.x_a=self.B_sqrt(self.analysis, *self.B_sqrtArgs)+self.x_bkg
 
+    #------------------------------------------------------
+    #----| Classical overloads |----------------------------
+    #-------------------------------------------------------
+
+    def __str__(self):
+        output="////| PrecondTWObsJTerm |//////////////////////////////////"
+        output+="\n B_sqrt:\n  %s"%self.B_sqrt
+        output+="\n B_sqrtAdj:\n  %s"%self.B_sqrtAdj
+
+        if self.isMinimized:
+            if self.warnFlag:
+                output+="\n <!> Warning %d <!>"%self.warnFlag
+            output+="\n function value=%f"%self.fOpt
+            output+="\n gradient norm=%f"%self.gOptNorm
+            output+="\n function calls=%d"%self.fCalls
+            output+="\n gradient calls=%d"%self.gCalls
+        else:
+            output+="\n Not minimized"
+        output+="\n///////////////////////////////////////////////////////////\n"
+        return output
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
@@ -125,7 +146,7 @@ if __name__=='__main__':
     model=kdv.kdvLauncher(kdvParam, maxA)
     tlm=kdv.kdvTLMLauncher(kdvParam)
     
-    base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=0.4)
+    base=kdv.rndSpecVec(g, Ntrc=10,  amp=0.4)
     soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
     longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
 

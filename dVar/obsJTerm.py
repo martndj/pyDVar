@@ -34,6 +34,7 @@ class StaticObsJTerm(JTerm):
         self.obsOpTLMAdjArgs=self.obs.obsOpArgs
 
         self.args=()
+        self.isMinimized=False
         
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -112,6 +113,7 @@ class TWObsJTerm(JTerm):
 
 
         self.args=()
+        self.isMinimized=False
         
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -174,6 +176,8 @@ class TWObsJTerm(JTerm):
         
         return -MAdjObs
 
+
+
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
@@ -187,45 +191,47 @@ if __name__=='__main__':
     from jTerm import TrivialJTerm
     
     minimize=False
+    staticObs=True
     Ntrc=120
     L=300.
     g=PeriodicGrid(Ntrc, L)
     
 
-    rndLFBase=kdv.rndFiltVec(g, Ntrc=g.Ntrc/4)
+    rndLFBase=kdv.rndSpecVec(g, Ntrc=g.Ntrc/4)
     soliton=kdv.soliton(g.x, 0., amp=2., beta=1., gamma=-1)
 
     x0_truth=soliton
     x0_degrad=degrad(x0_truth, 0., 0.3)
     x0_bkg=np.zeros(g.N)
 
-    print("=======================================================")
-    print("----| Static obs |-------------------------------------")
-    print("=======================================================")
-    obs1=StaticObs(g, x0_truth)
-    obs2Pos=np.array([-50.,0., 50.])
-    obs2=StaticObs(obs2Pos, x0_truth[pos2Idx(g, obs2Pos)],
-                    obsOp_Coord, obsOp_Coord_Adj)
-    JObs1=StaticObsJTerm(obs1, g) 
-    JObs2=StaticObsJTerm(obs2, g) 
+    if staticObs:
+        print("=======================================================")
+        print("----| Static obs |-------------------------------------")
+        print("=======================================================")
+        obs1=StaticObs(g, x0_truth)
+        obs2Pos=np.array([-50.,0., 50.])
+        obs2=StaticObs(obs2Pos, x0_truth[pos2Idx(g, obs2Pos)],
+                        obsOp_Coord, obsOp_Coord_Adj)
+        JObs1=StaticObsJTerm(obs1, g) 
+        JObs2=StaticObsJTerm(obs2, g) 
+        
+        #----| First test: only degrated first guess
+        JObs1.minimize(x0_degrad)
+        JObs2.minimize(x0_degrad)
     
-    #----| First test: only degrated first guess
-    JObs1.minimize(x0_degrad)
-    JObs2.minimize(x0_degrad)
-
-    #----| Second test: with null background term
-    #   the background term will constraint toward 0
-    Jbkg=TrivialJTerm()
-    JSum=JObs1+Jbkg*3.
-    JSum.minimize(x0_degrad)
-    
-    plt.figure()
-    plt.plot(g.x, x0_truth, 'k', linewidth=2)
-    plt.plot(g.x, x0_degrad, 'b')
-    plt.plot(g.x, JObs1.analysis, 'g')
-    plt.plot(g.x, JObs2.analysis, 'm')
-    plt.plot(JObs2.obs.interpolate(g), JObs2.obs.values, 'mo')
-    plt.plot(g.x, JSum.analysis, 'r')
+        #----| Second test: with null background term
+        #   the background term will constraint toward 0
+        Jbkg=TrivialJTerm()
+        JSum=JObs1+Jbkg*3.
+        JSum.minimize(x0_degrad)
+        
+        plt.figure()
+        plt.plot(g.x, x0_truth, 'k', linewidth=2)
+        plt.plot(g.x, x0_degrad, 'b')
+        plt.plot(g.x, JObs1.analysis, 'g')
+        plt.plot(g.x, JObs2.analysis, 'm')
+        plt.plot(JObs2.obs.interpolate(g), JObs2.obs.values, 'mo')
+        plt.plot(g.x, JSum.analysis, 'r')
     
     print("\n\n=======================================================")
     print("----| Dynamic obs |------------------------------------")

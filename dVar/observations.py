@@ -97,11 +97,14 @@ class StaticObs(object):
                     obsOpArgs=(), metric=None):
 
         if isinstance(coord, PeriodicGrid):
+            self.coordContinuous=True
+            self.grid=coord
             self.coord=coord.x
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
             if coord.ndim <> 1:
                 raise self.StaticObsError("coord.ndim==1")
+            self.coordContinuous=False
             self.coord=coord
             self.nObs=len(coord)
         else:
@@ -167,6 +170,25 @@ class StaticObs(object):
     def interpolate(self, g):
         return g.x[self.__pos2Idx(g)]
 
+    #------------------------------------------------------
+    #----| Classical overloads |----------------------------
+    #-------------------------------------------------------
+
+    def __str__(self):
+        output="____| StaticObs |___________________________"
+        if self.coordContinuous:
+            output+="\n   continuous observations\n"
+            output+=self.grid.__str__()
+        else:
+            output+="\n   discrete observations"
+            output+="\n   nObs=%d"%self.nObs
+            output+="\n   coord:\n     %s\n"%self.coord.__str__()
+        output+="\n   observation operator:\n     %s"%self.obsOp
+        output+="\n   observation tangeant operator adjoint:\n     %s"%self.obsOpTLMAdj
+        output+="\n____________________________________________"
+        return output
+
+
 
 
 #=====================================================================
@@ -202,6 +224,7 @@ class TimeWindowObs(object):
                         "d_Obs <dict {time <float>: <StaticObs>}>")
             if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
                 raise self.TimeWindowObsError("all obsOp must be the same")
+        self.nTimes=len(d_Obs.keys())
         self.times=np.sort(d_Obs.keys())
         self.tMax=self.times.max()
         self.d_Obs=d_Obs
@@ -264,6 +287,20 @@ class TimeWindowObs(object):
     def __getitem__(self, t):
         return self.d_Obs[t]
 
+    #-------------------------------------------------------
+
+    def __str__(self):
+        output="====| TimeWindowObs |==========================="
+        output+="\n nTimes=%d"%self.nTimes
+        output+="\n %s"%self.times.__str__()
+        output+="\n\n observation operator:\n  %s"%self.obsOp
+        for t in self.times:
+            output+="\n\n ["+str(t)+"]\n"
+            output+=self.d_Obs[t].__str__()
+        output+="\n================================================"
+        return output
+
+
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
@@ -279,18 +316,18 @@ if __name__=="__main__":
     g=PeriodicGrid(Ntrc, L)
         
 
-    x0_truth_base=kdv.rndFiltVec(g, Ntrc=g.Ntrc/5,  amp=1.)
+    x0_truth_base=kdv.rndSpecVec(g, Ntrc=10,  amp=1.)
     gaussWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
     soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
 
     x0_truth=x0_truth_base+gaussWave
     x0_degrad=degrad(x0_truth, 0., 0.3)
 
-    obs1=StaticObs(g, x0_degrad, None, ())
+    obs1=StaticObs(g, x0_degrad, None)
 
     obs2Coord=np.array([-50., 0., 70.])
     obs2=StaticObs(obs2Coord, x0_degrad[pos2Idx(g, obs2Coord)],
-                    obsOp_Coord, ())
+                    obsOp_Coord, obsOp_Coord_Adj)
 
 
     plt.subplot(211)
@@ -327,7 +364,8 @@ if __name__=="__main__":
         captorPosition=-80.+20.*t
         obsCoord=captorPosition+np.array([-10.,-5.,0.,5.,10.])
         obsValues=x_degrad.whereTime(t)[pos2Idx(g, obsCoord)]
-        d_Obs2[t]=StaticObs(obsCoord,obsValues, obsOp_Coord)
+        d_Obs2[t]=StaticObs(obsCoord,obsValues,
+                            obsOp_Coord, obsOp_Coord_Adj)
     timeObs2=TimeWindowObs(d_Obs2)
 
 

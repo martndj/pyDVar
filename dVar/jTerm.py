@@ -36,6 +36,8 @@ class JTerm(object):
             raise self.JTermError("args <tuple>")
         self.args=args
 
+        self.isMinimized=False
+
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -79,6 +81,8 @@ class JTerm(object):
         if retall:
             self.allvecs=minimizeReturn[7]
 
+        self.isMinimized=True
+
         #----| Final Gradient test |--------------
         if testGrad:
             if self.warnFlag==2:
@@ -91,6 +95,24 @@ class JTerm(object):
 
 
     #------------------------------------------------------
+    #----| Classical overloads |----------------------------
+    #-------------------------------------------------------
+
+    def __str__(self):
+        output="////| jTerm |//////////////////////////////////////////////"
+        if self.isMinimized:
+            if self.warnFlag:
+                output+="\n <!> Warning %d <!>"%self.warnFlag
+            output+="\n function value=%f"%self.fOpt
+            output+="\n gradient norm=%f"%self.gOptNorm
+            output+="\n function calls=%d"%self.fCalls
+            output+="\n gradient calls=%d"%self.gCalls
+        else:
+            output+="\n Not minimized"
+        output+="\n///////////////////////////////////////////////////////////\n"
+        return output
+
+    #-------------------------------------------------------
 
     def __add__(self, J2):
         if not isinstance(J2, JTerm):
@@ -186,6 +208,7 @@ class TrivialJTerm(JTerm):
     def __init__(self):
 
         self.args=()
+        self.isMinimized=False
 
     #------------------------------------------------------
     #----| Private methods |-------------------------------
