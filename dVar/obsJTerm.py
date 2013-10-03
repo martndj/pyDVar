@@ -186,7 +186,7 @@ class TWObsJTerm(JTerm):
 if __name__=='__main__':
 
     import matplotlib.pyplot as plt
-    from observations import degrad, pos2Idx, obsOp_Coord, obsOp_Coord_Adj
+    from observations import degrad, obsOp_Coord, obsOp_Coord_Adj
     import pyKdV as kdv
     from jTerm import TrivialJTerm
     
@@ -210,7 +210,7 @@ if __name__=='__main__':
         print("=======================================================")
         obs1=StaticObs(g, x0_truth)
         obs2Pos=np.array([-50.,0., 50.])
-        obs2=StaticObs(obs2Pos, x0_truth[pos2Idx(g, obs2Pos)],
+        obs2=StaticObs(obs2Pos, x0_truth[g.pos2Idx(obs2Pos)],
                         obsOp_Coord, obsOp_Coord_Adj)
         JObs1=StaticObsJTerm(obs1, g) 
         JObs2=StaticObsJTerm(obs2, g) 

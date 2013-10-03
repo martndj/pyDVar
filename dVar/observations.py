@@ -22,21 +22,7 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
         sig_degrad[i]=signal[i]+rnd.gauss(mu, sigma)
     return sig_degrad
 
-#-----------------------------------------------------------
 
-def pos2Idx(g, pos):
-    """
-    Convert space position to grid index
-    """
-    if not isinstance(pos, np.ndarray):
-        raise ObservationOpError("pos <numpy.ndarray>")
-    if pos.ndim<>1:
-        raise ObservationOpError("pos.ndim=1")
-    N=len(pos)
-    idx=np.zeros(N, dtype=int)
-    for i in xrange(N):
-        idx[i]=np.min(np.where(g.x>=pos[i]))
-    return idx
 
 #-----------------------------------------------------------
 #----| Observation operators |------------------------------
@@ -46,7 +32,7 @@ def obsOp_Coord(x, g, obsCoord):
     """
     Trivial static observation operator
     """
-    idxObs=pos2Idx(g, obsCoord)
+    idxObs=g.pos2Idx(obsCoord)
     nObs=len(idxObs)
     H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
@@ -57,7 +43,7 @@ def obsOp_Coord_Adj(obs, g, obsCoord):
     """
     Trivial static observation operator adjoint
     """
-    idxObs=pos2Idx(g, obsCoord)
+    idxObs=g.pos2Idx(obsCoord)
     nObs=len(idxObs)
     H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
@@ -105,7 +91,8 @@ class StaticObs(object):
             if coord.ndim <> 1:
                 raise self.StaticObsError("coord.ndim==1")
             self.coordContinuous=False
-            self.coord=coord
+            order=np.argsort(coord)
+            self.coord=coord[order]
             self.nObs=len(coord)
         else:
             raise self.StaticObsError(
@@ -115,7 +102,10 @@ class StaticObs(object):
             raise self.StaticObsError("coord <numpy.ndarray>")
         if values.ndim<>1 or len(values)<>self.nObs:
             raise self.StaticObsError("len(values)==self.nObs")
-        self.values=values
+        if self.coordContinuous:
+            self.values=values
+        else:
+            self.values=values[order]
 
         if not ((callable(obsOp) and callable(obsOpTLMAdj)) or 
                 (obsOp==None and obsOpTLMAdj==None)):
@@ -326,7 +316,7 @@ if __name__=="__main__":
     obs1=StaticObs(g, x0_degrad, None)
 
     obs2Coord=np.array([-50., 0., 70.])
-    obs2=StaticObs(obs2Coord, x0_degrad[pos2Idx(g, obs2Coord)],
+    obs2=StaticObs(obs2Coord, x0_degrad[g.pos2Idx(obs2Coord)],
                     obsOp_Coord, obsOp_Coord_Adj)
 
 
@@ -363,7 +353,7 @@ if __name__=="__main__":
         t=tInt*(i+1)/nObsTime
         captorPosition=-80.+20.*t
         obsCoord=captorPosition+np.array([-10.,-5.,0.,5.,10.])
-        obsValues=x_degrad.whereTime(t)[pos2Idx(g, obsCoord)]
+        obsValues=x_degrad.whereTime(t)[g.pos2Idx(obsCoord)]
         d_Obs2[t]=StaticObs(obsCoord,obsValues,
                             obsOp_Coord, obsOp_Coord_Adj)
     timeObs2=TimeWindowObs(d_Obs2)
