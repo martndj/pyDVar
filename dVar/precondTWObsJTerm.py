@@ -128,8 +128,9 @@ class PrecondTWObsJTerm(TWObsJTerm):
 if __name__=='__main__':
 
     import matplotlib.pyplot as plt
-    from observations import degrad, pos2Idx, obsOp_Coord, obsOp_Coord_Adj
-    from modelCovariances import B_sqrt_op, B_sqrt_op_Adj, fCorr_isoHomo,\
+    from observations import degrad, obsOp_Coord, obsOp_Coord_Adj
+    from modelCovariances import B_sqrt_op, B_sqrt_op_Adj,\
+                                    fCorr_isoHomo,\
                                     rCTilde_sqrt_isoHomo
     import pyKdV as kdv
     from jTerm import TrivialJTerm
@@ -162,7 +163,7 @@ if __name__=='__main__':
     d_Obs={}
     for i in xrange(nObsTime):
         t=tInt*(i+1)/nObsTime
-        obsPos=np.linspace(-g.L/2., g.L/2., nPosObs)
+        obsPos=np.linspace(-g.L/2., g.L/2.-g.dx, nPosObs)
         obsValues=obsOp_Coord(x_truth.whereTime(t), g, obsPos)
         d_Obs[t]=StaticObs(obsPos, obsValues, obsOp_Coord, obsOp_Coord_Adj)
     timeObs=TimeWindowObs(d_Obs)
@@ -202,7 +203,7 @@ if __name__=='__main__':
         sub.plot(timeObs[t].interpolate(g), timeObs[t].values, 'go')
         sub.plot(g.x, x_bkg.whereTime(t), 'b')
         sub.plot(timeObs[t].interpolate(g), 
-                    x_bkg.whereTime(t)[pos2Idx(g, timeObs[t].coord)], 'bo')
+                    x_bkg.whereTime(t)[g.pos2Idx(timeObs[t].coord)], 'bo')
         sub.set_title("$t=%f$"%t)
         if i==timeObs.nObs:
             sub.legend(["$x_{t}$",  "$y$", "$x_b$", 

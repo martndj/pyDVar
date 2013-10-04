@@ -190,8 +190,9 @@ if __name__=='__main__':
     import pyKdV as kdv
     from jTerm import TrivialJTerm
     
-    minimize=False
-    staticObs=True
+    minimize=True
+    staticObs=False
+    TWObs=True
     Ntrc=120
     L=300.
     g=PeriodicGrid(Ntrc, L)
@@ -233,45 +234,46 @@ if __name__=='__main__':
         plt.plot(JObs2.obs.interpolate(g), JObs2.obs.values, 'mo')
         plt.plot(g.x, JSum.analysis, 'r')
     
-    print("\n\n=======================================================")
-    print("----| Dynamic obs |------------------------------------")
-    print("=======================================================")
-    def gaussProfile(x):
-        x0=0.
-        sig=5.
-        return -0.1*np.exp(-((x-x0)**2)/(2*sig**2))
-
-    kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=30.
-    maxA=4.
-    maxiter=50
+    if TWObs:
+        print("\n\n=======================================================")
+        print("----| Dynamic obs |------------------------------------")
+        print("=======================================================")
+        def gaussProfile(x):
+            x0=0.
+            sig=5.
+            return -0.1*np.exp(-((x-x0)**2)/(2*sig**2))
     
-    model=kdv.kdvLauncher(kdvParam, maxA)
-    tlm=kdv.kdvTLMLauncher(kdvParam)
-    x_truth=model.integrate(x0_truth, tInt)
-    x_degrad=model.integrate(x0_degrad, tInt)
-    x_bkg=model.integrate(x0_bkg, tInt)
-
-    nObsTime=3
-    d_Obs1={}
-    for i in xrange(nObsTime):
-        d_Obs1[tInt*(i+1)/nObsTime]=StaticObs(g,
-            x_truth.whereTime(tInt*(i+1)/nObsTime))
-    timeObs1=TimeWindowObs(d_Obs1)
-
-    JTWObs=TWObsJTerm(timeObs1, model, tlm) 
-    if minimize:
-        JTWObs.minimize(x0_bkg)
-        x_a=model.integrate(JTWObs.analysis, tInt)
-
-    plt.figure()
-    i=0
-    for t in timeObs1.times:
-        i+=1
-        sub=plt.subplot(nObsTime, 1, i)
-        sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
-        sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
+        kdvParam=kdv.Param(g, beta=1., gamma=-1.)
+        tInt=10.
+        maxA=4.
+        maxiter=50
+        
+        model=kdv.kdvLauncher(kdvParam, maxA)
+        tlm=kdv.kdvTLMLauncher(kdvParam)
+        x_truth=model.integrate(x0_truth, tInt)
+        x_degrad=model.integrate(x0_degrad, tInt)
+        x_bkg=model.integrate(x0_bkg, tInt)
+    
+        nObsTime=3
+        d_Obs1={}
+        for i in xrange(nObsTime):
+            d_Obs1[tInt*(i+1)/nObsTime]=StaticObs(g,
+                x_truth.whereTime(tInt*(i+1)/nObsTime))
+        timeObs1=TimeWindowObs(d_Obs1)
+    
+        JTWObs=TWObsJTerm(timeObs1, model, tlm) 
         if minimize:
-            sub.plot(g.x, x_a.whereTime(t), 'r')
-        sub.set_title("t=%.2f"%t)
+            JTWObs.minimize(x0_bkg)
+            x_a=model.integrate(JTWObs.analysis, tInt)
+    
+        plt.figure()
+        i=0
+        for t in timeObs1.times:
+            i+=1
+            sub=plt.subplot(nObsTime, 1, i)
+            sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
+            sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
+            if minimize:
+                sub.plot(g.x, x_a.whereTime(t), 'r')
+            sub.set_title("t=%.2f"%t)
     plt.show()
