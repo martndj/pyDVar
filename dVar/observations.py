@@ -1,6 +1,9 @@
 import numpy as np
-from pseudoSpec1D import PeriodicGrid, Launcher
+from pseudoSpec1D import Grid, Launcher, Trajectory
 import random as rnd
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
+from matplotlib.gridspec import GridSpec
 
 #-----------------------------------------------------------
 #----| Utilitaries |----------------------------------------
@@ -60,8 +63,8 @@ class StaticObs(object):
 
     StaticObs(coord, values, obsOp, obsOpTLMAdj, obsOpArgs=())
         coord       :   observation positions
-                            <pseudoSpec1D.PeriodicGrid | numpy.ndarray>
-                            (PeriodicGrid for continuous observations)
+                            <pseudoSpec1D.Grid | numpy.ndarray>
+                            (Grid for continuous observations)
         values      :   observation values <numpy.ndarray>
         obsOp       :   static observation operator <function | None>
         obsOpTLMAdj :   static observation TLM adjoint <function | None>
@@ -82,7 +85,7 @@ class StaticObs(object):
     def __init__(self, coord, values, obsOp=None, obsOpTLMAdj=None,
                     obsOpArgs=(), metric=None):
 
-        if isinstance(coord, PeriodicGrid):
+        if isinstance(coord, Grid):
             self.coordContinuous=True
             self.grid=coord
             self.coord=coord.x
@@ -96,7 +99,7 @@ class StaticObs(object):
             self.nObs=len(coord)
         else:
             raise self.StaticObsError(
-                "coord <pseudoSpec1D.PeriodicGrid | numpy.ndarray>")
+                "coord <pseudoSpec1D.Grid | numpy.ndarray>")
 
         if not isinstance(values, np.ndarray):
             raise self.StaticObsError("coord <numpy.ndarray>")
@@ -144,7 +147,12 @@ class StaticObs(object):
     #------------------------------------------------------
 
     def modelEquivalent(self, x, g):
-        
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        if not isinstance(x, np.ndarray):
+            raise self.StaticObsError("x <numpy.ndarray>")
+        if not (x.ndim==1 or len(x)==g.N):
+            raise self.StaticObsError("x.shape=(g.N)")
         if self.obsOp<>None:
             return self.obsOp(x, g, self.coord, *self.obsOpArgs)
         else:
@@ -153,13 +161,49 @@ class StaticObs(object):
     #------------------------------------------------------
     
     def innovation(self, x, g):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        if not isinstance(x, np.ndarray):
+            raise self.StaticObsError("x <numpy.ndarray>")
+        if not (x.ndim==1 or len(x)==g.N):
+            raise self.StaticObsError("x.shape=(g.N)")
         return self.values-self.modelEquivalent(x, g)
 
     #------------------------------------------------------
 
     def interpolate(self, g):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
         return g.x[self.__pos2Idx(g)]
 
+    #-------------------------------------------------------
+    #----| Plotting methods |-------------------------------
+    #-------------------------------------------------------
+    
+    def plot(self, g, continuousField=None, axe=None, style='go', 
+                continuousFieldStyle='k-'):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        axe=self.__checkAxe(axe)
+        axe.plot(self.interpolate(g), self.values, style)
+        if isinstance(continuousField, np.ndarray):
+            if (continuousField.ndim==1 and 
+                    len(continuousField)==g.N):
+                axe.plot(g.x, continuousField, continuousFieldStyle)
+            else:
+                raise self.StaticObsError(
+                        "incompatible continuous field dimensions")
+
+
+    #-------------------------------------------------------
+
+    def __checkAxe(self, axe):
+        if axe==None:
+            axe=plt.subplot(111)
+        elif not (isinstance(axe,(Axes, GridSpec))):
+            raise self.StaticObsError(
+                "axe < matplotlib.axes.Axes | matplotlib.gridspec.GridSpec >")
+        return axe
     #------------------------------------------------------
     #----| Classical overloads |----------------------------
     #-------------------------------------------------------
@@ -270,6 +314,32 @@ class TimeWindowObs(object):
             d_inno[t]=self.d_Obs[t].values-d_Hx[t]
         return d_inno
         
+    #-------------------------------------------------------
+    #----| Plotting methods |-------------------------------
+    #-------------------------------------------------------
+    
+    def plot(self, g, nbGraphLine=3, trajectory=None, style='go', 
+                trajectoryStyle='k'):
+        if not (isinstance(trajectory, Trajectory) or trajectory==None): 
+            raise TimeWindowObsError("trajectory <None | Trajectory>")
+        if self.nObs < nbGraphLine:
+            nSubRow=self.nObs
+        else:
+            nSubRow=nbGraphLine
+        nSubLine=self.nObs/nSubRow
+        if self.nObs%nSubRow: nSubLine+=1
+        i=0
+        for t in self.times:
+            i+=1
+            sub=plt.subplot(nSubLine, nSubRow, i)
+            if trajectory==None:
+                self[t].plot(g, axe=sub, style=style)
+            else:
+                self[t].plot(g, axe=sub, style=style,
+                                continuousField=trajectory.whereTime(t),
+                                continuousFieldStyle=trajectoryStyle)
+            sub.set_title("$t=%f$"%t)
+
     #------------------------------------------------------
     #----| Classical overloads |---------------------------
     #------------------------------------------------------
