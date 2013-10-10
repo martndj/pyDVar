@@ -142,9 +142,8 @@ if __name__=='__main__':
     
     kdvParam=kdv.Param(g, beta=1., gamma=-1.)
     tInt=15.
-    maxA=4.
 
-    model=kdv.kdvLauncher(kdvParam, maxA)
+    model=kdv.kdvLauncher(kdvParam, maxA=4.)
     tlm=kdv.kdvTLMLauncher(kdvParam)
     
     base=kdv.rndSpecVec(g, Ntrc=10,  amp=0.4)

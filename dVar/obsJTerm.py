@@ -245,10 +245,9 @@ if __name__=='__main__':
     
         kdvParam=kdv.Param(g, beta=1., gamma=-1.)
         tInt=10.
-        maxA=4.
         maxiter=50
         
-        model=kdv.kdvLauncher(kdvParam, maxA)
+        model=kdv.kdvLauncher(kdvParam, maxA=4.)
         tlm=kdv.kdvTLMLauncher(kdvParam)
         x_truth=model.integrate(x0_truth, tInt)
         x_degrad=model.integrate(x0_degrad, tInt)
