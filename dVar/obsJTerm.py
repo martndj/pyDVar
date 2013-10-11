@@ -20,11 +20,12 @@ class StaticObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, g): 
+    def __init__(self, obs, g, minimizer=None): 
 
         if not isinstance(obs, StaticObs):
             raise StaticObsJTermError("obs <SaticObs>")
         self.obs=obs
+        self.nObs=self.obs.nObs
 
         if not isinstance(g, PeriodicGrid):
             raise StaticObsJTermError("g <pseudoSpec1D.PeriodicGrid>")
@@ -33,6 +34,7 @@ class StaticObsJTerm(JTerm):
         self.obsOpTLMAdj=self.obs.obsOpTLMAdj
         self.obsOpTLMAdjArgs=self.obs.obsOpArgs
 
+        self.setMinimizer(minimizer)
         self.args=()
         self.isMinimized=False
         
@@ -54,23 +56,32 @@ class StaticObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x): 
+    def J(self, x, normalize=True): 
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
-        return 0.5*np.dot(inno, np.dot(self.obs.metric, inno)) 
+        if normalize:
+            return (0.5/self.nObs)*np.dot(
+                                inno, np.dot(self.obs.metric, inno)) 
+        else:
+            return 0.5*np.dot(inno, np.dot(self.obs.metric, inno)) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
+    def gradJ(self, x, normalize=True):
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
-            return -np.dot(self.obs.metric, inno)
+            grad= -np.dot(self.obs.metric, inno)
         else:
-            return -self.obsOpTLMAdj(np.dot(self.obs.metric, inno),
+            grad= -self.obsOpTLMAdj(np.dot(self.obs.metric, inno),
                                             self.modelGrid,
                                             self.obs.coord,
                                             *self.obsOpTLMAdjArgs)
+
+        if normalize:
+            return (1./self.nObs)*grad
+        else:
+            return grad 
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -94,11 +105,12 @@ class TWObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm): 
+    def __init__(self, obs, nlModel, tlm, minimizer=None): 
 
         if not isinstance(obs, TimeWindowObs):
             raise self.TWObsJTermError("obs <TimeWindowObs>")
         self.obs=obs
+        self.nTimes=self.obs.nTimes
         self.nObs=self.obs.nObs
 
         if not (isinstance(nlModel,Launcher)):
@@ -112,6 +124,7 @@ class TWObsJTerm(JTerm):
         self.modelGrid=nlModel.grid
 
 
+        self.setMinimizer(minimizer)
         self.args=()
         self.isMinimized=False
         
@@ -133,17 +146,20 @@ class TWObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x): 
+    def J(self, x, normalize=True): 
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         Jo=0.
         for t in self.obs.times:
             Jo+=0.5*np.dot(d_inno[t],np.dot(self.obs[t].metric,d_inno[t]))
-        return Jo
+        if normalize:
+            return (1./self.nObs)*Jo
+        else:
+            return Jo
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
+    def gradJ(self, x, normalize=True):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         d_NormInno={}
@@ -158,7 +174,7 @@ class TWObsJTerm(JTerm):
         MAdjObs=np.zeros(self.nlModel.grid.N)
         for t in self.obs.times[::-1]:
             i+=1
-            if i<self.nObs:
+            if i<self.nTimes:
                 t_pre=self.obs.times[-1-i]
             else:
                 t_pre=0.
@@ -174,7 +190,10 @@ class TWObsJTerm(JTerm):
             MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
             w=MAdjObs
         
-        return -MAdjObs
+        if normalize:
+            return -(1./self.nObs)*MAdjObs
+        else:
+            return -MAdjObs
 
 
 
@@ -193,14 +212,16 @@ if __name__=='__main__':
     minimize=True
     staticObs=False
     TWObs=True
+    convergencePlot=True
     Ntrc=120
     L=300.
     g=PeriodicGrid(Ntrc, L)
     
-
-    rndLFBase=kdv.rndSpecVec(g, Ntrc=g.Ntrc/4)
-    soliton=kdv.soliton(g.x, 0., amp=2., beta=1., gamma=-1)
-
+    #----| Nature run (truth) |-------------
+    rndLFBase=kdv.rndSpecVec(g, Ntrc=8)
+    x0Soliton=0.
+    soliton=kdv.soliton(g.x, x0Soliton, amp=3., beta=1., gamma=-1)
+        
     x0_truth=soliton
     x0_degrad=degrad(x0_truth, 0., 0.3)
     x0_bkg=np.zeros(g.N)
@@ -238,41 +259,103 @@ if __name__=='__main__':
         print("\n\n=======================================================")
         print("----| Dynamic obs |------------------------------------")
         print("=======================================================")
-        def gaussProfile(x):
+                
+        def gauss(x):
             x0=0.
             sig=5.
             return -0.1*np.exp(-((x-x0)**2)/(2*sig**2))
-    
-        kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-        tInt=10.
-        maxiter=50
-        
-        model=kdv.kdvLauncher(kdvParam, maxA=4.)
+                
+        kdvParam=kdv.Param(g, beta=1., gamma=-1)#, rho=gauss)
+        dt=kdv.dtStable(g, kdvParam, maxA=4., dtMod=0.5)   
+        model=kdv.kdvLauncher(kdvParam, dt=dt )
         tlm=kdv.kdvTLMLauncher(kdvParam)
+       
+        tInt=10. 
+        
         x_truth=model.integrate(x0_truth, tInt)
-        x_degrad=model.integrate(x0_degrad, tInt)
-        x_bkg=model.integrate(x0_bkg, tInt)
-    
-        nObsTime=3
-        d_Obs1={}
-        for i in xrange(nObsTime):
-            d_Obs1[tInt*(i+1)/nObsTime]=StaticObs(g,
-                x_truth.whereTime(tInt*(i+1)/nObsTime))
-        timeObs1=TimeWindowObs(d_Obs1)
-    
-        JTWObs=TWObsJTerm(timeObs1, model, tlm) 
+        tlm.initialize(x_truth)
+        
+        #----| Observations |-------------------
+        sigma=0.1
+        x_obs=x_truth
+        
+        nTObs=4
+        t_tObs=[]
+        for i in xrange(nTObs):
+            t_tObs.append((i+1)*tInt/(nTObs))
+        t_tObs.sort()
+        
+        nPosObs=30
+        dxPosObs=2.
+        d_Obs={}
+        d_posObs={}
+        
+        for t in t_tObs:
+            xSol=x0Soliton+kdv.cSoliton(amp=3., beta=1., gamma=-1)*t
+            d_posObs[t]=np.zeros(nPosObs)
+            d_posObs[t][0]=xSol
+            for i in xrange(1,nPosObs):
+                if i%2:
+                    d_posObs[t][i]=xSol+(i/2+1)*dxPosObs
+                else:
+                    d_posObs[t][i]=xSol-((i-1)/2+1)*dxPosObs
+        
+        
+        for t in t_tObs:
+            R_inv=np.ones(nPosObs)*sigma**(-1)
+            obsValues=obsOp_Coord(x_obs.whereTime(t), g, d_posObs[t])
+        
+            d_Obs[t]=StaticObs(d_posObs[t], obsValues, 
+                                obsOp=obsOp_Coord, 
+                                obsOpTLMAdj=obsOp_Coord_Adj, 
+                                metric=R_inv)
+        
+        timeObs=TimeWindowObs(d_Obs)
+        
+        #----| First Guess |--------------------
+        x0_bkg=np.zeros(g.N)
+        
+        Jo=TWObsJTerm(timeObs, model, tlm)
+        J=Jo
+        
         if minimize:
-            JTWObs.minimize(x0_bkg)
-            x_a=model.integrate(JTWObs.analysis, tInt)
-    
-        plt.figure()
-        i=0
-        for t in timeObs1.times:
-            i+=1
-            sub=plt.subplot(nObsTime, 1, i)
-            sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
-            sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
-            if minimize:
-                sub.plot(g.x, x_a.whereTime(t), 'r')
-            sub.set_title("t=%.2f"%t)
+            #----| Minimizing |---------------------
+            print("\nMinimizing J...")
+            #J.minimize(np.zeros(g.N))
+            J.minimize(x0_bkg, maxiter=100)
+            print("Analysis innovation:\n ")
+            print(timeObs.innovation(J.analysis, model))
+            
+            
+            
+            #----| Integrating trajectories |-------
+            x0_a=J.analysis
+            x_a=model.integrate(x0_a, tInt)
+            print("\nTruth-Analysis amplitude:\n ")
+            print(" initial time: %f"%g.norm(x0_truth-x0_a))
+            print(" final time:   %f"%g.norm(x_truth.final-x_a.final))
+            
+            
+            timeObs.plot(g, trajectory=x_truth, trajectoryStyle='k:')
+            timeObs.plot(g, trajectory=x_a, trajectoryStyle='r')
+            
+            
+            plt.figure(figsize=(12.,6.))
+            sub=plt.subplot(1,1,1)
+            sub.plot(g.x, x0_truth, 'g')
+            sub.plot(g.x, x_truth.final, 'b')
+            sub.plot(g.x, x0_a, 'r')
+            sub.plot(g.x, x_a.final, 'm')
+            sub.plot(g.x, x0_bkg, 'k')
+            sub.legend(["${x_t}_0$", "${x_t}_f$",
+                        "${x_a}_0$","${x_a}_f$",
+                        "${x_b}_0$",
+                        ], loc='best')
+
+            if convergencePlot:
+                print("\nAnalyzing convergence speed...")
+                plt.figure()
+                plt.semilogy(J.convergence())
+                plt.xlabel("$n$ (# iterations)")
+                plt.ylabel("$J$")
     plt.show()

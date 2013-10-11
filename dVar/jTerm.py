@@ -24,7 +24,8 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, costFunc, gradCostFunc, args=()):
+    def __init__(self, costFunc, gradCostFunc, args=(), 
+                    minimizer=None):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
@@ -37,7 +38,9 @@ class JTerm(object):
         self.args=args
 
         self.isMinimized=False
+        self.retall=False
 
+        self.setMinimizer(minimizer)
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -52,20 +55,31 @@ class JTerm(object):
 
     #------------------------------------------------------
 
+    def setMinimizer(self, minimizer=None):
+        if minimizer==None:
+            self.minimizer=sciOpt.fmin_bfgs
+        else:
+            if not callable(minimizer):
+                raise self.JTermError("minimizer <function>")
+            self.minimizer=minimizer
+    
+    #------------------------------------------------------
+
     def minimize(self, x_fGuess, 
                     maxiter=50, retall=True,
-                    testGrad=True, testGradMinPow=-1, testGradMaxPow=-14):
+                    testGrad=True, 
+                    testGradMinPow=-1, testGradMaxPow=-14):
+
 
         if x_fGuess.dtype<>'float64':
-            raise JTermError("x_fGuess.dtype=='float64'")
+            raise self.JTermError("x_fGuess.dtype=='float64'")
         #----| Gradient test |--------------------
         if testGrad:
             self.gradTest(x_fGuess,
                             powRange=[testGradMinPow, testGradMaxPow])
 
         #----| Minimizing |-----------------------
-        self.minimize=sciOpt.fmin_bfgs
-        minimizeReturn=self.minimize(self.J, x_fGuess, args=self.args,
+        minimizeReturn=self.minimizer(self.J, x_fGuess, args=self.args,
                                         fprime=self.gradJ,  
                                         maxiter=maxiter,
                                         retall=retall,
@@ -82,6 +96,8 @@ class JTerm(object):
             self.allvecs=minimizeReturn[7]
 
         self.isMinimized=True
+        self.retall=retall
+        self.maxiter=maxiter
 
         #----| Final Gradient test |--------------
         if testGrad:
@@ -93,6 +109,16 @@ class JTerm(object):
                             powRange=[testGradMinPow, testGradMaxPow])
 
 
+    #------------------------------------------------------
+
+    def convergence(self):
+        if not (self.isMinimized and self.retall):
+            raise self.JTermError(
+                "Must be minimized and with retall=True")
+        self.Jval=[]
+        for i in xrange(len(self.allvecs)):
+            self.Jval.append(self.J(self.allvecs[i]))
+        return self.Jval
 
     #------------------------------------------------------
     #----| Classical overloads |----------------------------

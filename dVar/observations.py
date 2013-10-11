@@ -262,7 +262,9 @@ class TimeWindowObs(object):
         self.times=np.sort(d_Obs.keys())
         self.tMax=self.times.max()
         self.d_Obs=d_Obs
-        self.nObs=len(d_Obs)
+        self.nObs=0
+        for t in d_Obs.keys():
+            self.nObs+=self.d_Obs[t].nObs
         self.obsOp=d_Obs[d_Obs.keys()[0]].obsOp
         self.obsOpArgs=d_Obs[d_Obs.keys()[0]].obsOpArgs
 
@@ -322,12 +324,12 @@ class TimeWindowObs(object):
                 trajectoryStyle='k'):
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
             raise TimeWindowObsError("trajectory <None | Trajectory>")
-        if self.nObs < nbGraphLine:
-            nSubRow=self.nObs
+        if self.nTimes < nbGraphLine:
+            nSubRow=self.nTimes
         else:
             nSubRow=nbGraphLine
-        nSubLine=self.nObs/nSubRow
-        if self.nObs%nSubRow: nSubLine+=1
+        nSubLine=self.nTimes/nSubRow
+        if self.nTimes%nSubRow: nSubLine+=1
         i=0
         for t in self.times:
             i+=1

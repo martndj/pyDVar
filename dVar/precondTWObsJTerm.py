@@ -42,7 +42,7 @@ class PrecondTWObsJTerm(TWObsJTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm,
+    def __init__(self, obs, nlModel, tlm, minimizer=None,
                     x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()):
 
         super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm)  
@@ -58,6 +58,7 @@ class PrecondTWObsJTerm(TWObsJTerm):
         self.__xValidate(x_bkg)
         self.x_bkg=x_bkg
 
+        self.setMinimizer(minimizer)
         self.isMinimized=False
     #------------------------------------------------------
     #----| Private methods |-------------------------------
