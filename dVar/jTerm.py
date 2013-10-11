@@ -24,8 +24,7 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, costFunc, gradCostFunc, args=(), 
-                    minimizer=None):
+    def __init__(self, costFunc, gradCostFunc, args=()):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
@@ -40,7 +39,6 @@ class JTerm(object):
         self.isMinimized=False
         self.retall=False
 
-        self.setMinimizer(minimizer)
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -65,11 +63,12 @@ class JTerm(object):
     
     #------------------------------------------------------
 
-    def minimize(self, x_fGuess, 
+    def minimize(self, x_fGuess, minimizer=None, 
                     maxiter=50, retall=True,
                     testGrad=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
 
+        self.setMinimizer(minimizer)
 
         if x_fGuess.dtype<>'float64':
             raise self.JTermError("x_fGuess.dtype=='float64'")
@@ -88,12 +87,11 @@ class JTerm(object):
         self.fOpt=minimizeReturn[1]
         self.gOpt=minimizeReturn[2]
         self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
-        self.hInvOpt=minimizeReturn[3]
-        self.fCalls=minimizeReturn[4]
-        self.gCalls=minimizeReturn[5]
-        self.warnFlag=minimizeReturn[6]
+        self.fCalls=minimizeReturn[-4]
+        self.gCalls=minimizeReturn[-3]
+        self.warnFlag=minimizeReturn[-2]
         if retall:
-            self.allvecs=minimizeReturn[7]
+            self.allvecs=minimizeReturn[-1]
 
         self.isMinimized=True
         self.retall=retall

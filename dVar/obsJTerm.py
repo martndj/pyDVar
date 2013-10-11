@@ -20,7 +20,7 @@ class StaticObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, g, minimizer=None): 
+    def __init__(self, obs, g): 
 
         if not isinstance(obs, StaticObs):
             raise StaticObsJTermError("obs <SaticObs>")
@@ -34,7 +34,6 @@ class StaticObsJTerm(JTerm):
         self.obsOpTLMAdj=self.obs.obsOpTLMAdj
         self.obsOpTLMAdjArgs=self.obs.obsOpArgs
 
-        self.setMinimizer(minimizer)
         self.args=()
         self.isMinimized=False
         
@@ -105,7 +104,7 @@ class TWObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm, minimizer=None): 
+    def __init__(self, obs, nlModel, tlm): 
 
         if not isinstance(obs, TimeWindowObs):
             raise self.TWObsJTermError("obs <TimeWindowObs>")
@@ -124,7 +123,6 @@ class TWObsJTerm(JTerm):
         self.modelGrid=nlModel.grid
 
 
-        self.setMinimizer(minimizer)
         self.args=()
         self.isMinimized=False
         
@@ -322,7 +320,7 @@ if __name__=='__main__':
             #----| Minimizing |---------------------
             print("\nMinimizing J...")
             #J.minimize(np.zeros(g.N))
-            J.minimize(x0_bkg, maxiter=100)
+            J.minimize(x0_bkg, maxiter=50)
             print("Analysis innovation:\n ")
             print(timeObs.innovation(J.analysis, model))
             

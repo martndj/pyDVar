@@ -42,7 +42,7 @@ class PrecondTWObsJTerm(TWObsJTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm, minimizer=None,
+    def __init__(self, obs, nlModel, tlm, 
                     x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()):
 
         super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm)  
@@ -58,7 +58,6 @@ class PrecondTWObsJTerm(TWObsJTerm):
         self.__xValidate(x_bkg)
         self.x_bkg=x_bkg
 
-        self.setMinimizer(minimizer)
         self.isMinimized=False
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -93,10 +92,11 @@ class PrecondTWObsJTerm(TWObsJTerm):
         return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)
     #------------------------------------------------------
 
-    def minimize(self, xi, 
+    def minimize(self, xi, minimizer=None, 
                     maxiter=50, retall=True, testGrad=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
-        super(PrecondTWObsJTerm, self).minimize(xi, maxiter, retall,
+        super(PrecondTWObsJTerm, self).minimize(xi, minimizer,
+                                                maxiter, retall,
                                                 testGrad, 
                                                 testGradMinPow, 
                                                 testGradMaxPow)
@@ -170,7 +170,7 @@ if __name__=='__main__':
 
     #----| Preconditionning |-----------
     Lc=10.
-    sig=2.
+    sig=1.
     corr=fCorr_isoHomo(g, Lc)
     rCTilde_sqrt=rCTilde_sqrt_isoHomo(g, corr)
     var=sig*np.ones(g.N)
@@ -183,7 +183,7 @@ if __name__=='__main__':
     # J=0.5<xi.T,xi>+0.5<(y-H(x)).T,R_inv(y-H(x))>
     #   x=B_sqrt(xi)+x_bkg
     Jxi=TrivialJTerm()
-    J=Jxi+JPTWObs*0.1
+    J=Jxi+JPTWObs
     # the scaling compensate the huge number of observations making
     # JPTWObs >> Jxi 
 
@@ -192,8 +192,8 @@ if __name__=='__main__':
     x_a=model.integrate(x0_a,  tInt)
 
     nSubRow=3
-    nSubLine=timeObs.nObs/nSubRow+1
-    if timeObs.nObs%nSubRow: nSubLine+=1
+    nSubLine=timeObs.nTimes/nSubRow+1
+    if timeObs.nTimes%nSubRow: nSubLine+=1
     plt.figure(figsize=(12.,12.))
     i=0
     for t in timeObs.times:
@@ -205,7 +205,7 @@ if __name__=='__main__':
         sub.plot(timeObs[t].interpolate(g), 
                     x_bkg.whereTime(t)[g.pos2Idx(timeObs[t].coord)], 'bo')
         sub.set_title("$t=%f$"%t)
-        if i==timeObs.nObs:
+        if i==timeObs.nTimes:
             sub.legend(["$x_{t}$",  "$y$", "$x_b$", 
                         "$H(x_b)$"], loc="lower left")
     sub=plt.subplot(nSubLine, 1,1)
