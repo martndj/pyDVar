@@ -55,7 +55,7 @@ class StaticObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, normalize=True): 
+    def J(self, x, normalize=False): 
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if normalize:
@@ -66,7 +66,7 @@ class StaticObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=True):
+    def gradJ(self, x, normalize=False):
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
@@ -144,7 +144,7 @@ class TWObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, normalize=True): 
+    def J(self, x, normalize=False): 
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         Jo=0.
@@ -157,7 +157,7 @@ class TWObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=True):
+    def gradJ(self, x, normalize=False):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         d_NormInno={}
