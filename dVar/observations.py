@@ -15,7 +15,7 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
 
     degrad(u,mu,sigma,seed=...)
 
-    u       :  input signal
+    signal  :  input signal
     mu      :  noise mean (gaussian mean)
     sigma   :  noise variance
     '''
@@ -25,7 +25,28 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
         sig_degrad[i]=signal[i]+rnd.gauss(mu, sigma)
     return sig_degrad
 
+def degradTraj(traj, mu, sigma, seed=0.7349156729):
+    '''
+    Gaussian noise trajectory degradation
 
+    degrad(u,mu,sigma,seed=...)
+
+    traj    :  input trajectory
+    mu      :  noise mean (gaussian mean)
+    sigma   :  noise variance
+    '''
+    if not isinstance(traj, Trajectory):
+        raise Exception("traj <Trajectory>")
+    rnd.seed(seed)
+    ic_degrad=degrad(traj.ic, mu, sigma, seed=seed)
+    traj_degrad=Trajectory(traj.grid)
+    traj_degrad.initialize(ic_degrad, traj.nDt, traj.dt)
+    traj_degrad[0]=ic_degrad
+    for i in xrange(1,traj.nDt+1):
+        for j in xrange(traj.grid.N):
+            traj_degrad[i][j]=traj[i][j]+rnd.gauss(mu, sigma)
+    traj_degrad.incrmTReal(finished=True, tReal=traj.tReal)
+    return traj_degrad
 
 #-----------------------------------------------------------
 #----| Observation operators |------------------------------
@@ -86,14 +107,14 @@ class StaticObs(object):
                     obsOpArgs=(), metric=None):
 
         if isinstance(coord, Grid):
-            self.coordContinuous=True
+            self.isGridded=True
             self.grid=coord
             self.coord=coord.x
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
             if coord.ndim <> 1:
                 raise self.StaticObsError("coord.ndim==1")
-            self.coordContinuous=False
+            self.isGridded=False
             order=np.argsort(coord)
             self.coord=coord[order]
             self.nObs=len(coord)
@@ -105,7 +126,7 @@ class StaticObs(object):
             raise self.StaticObsError("coord <numpy.ndarray>")
         if values.ndim<>1 or len(values)<>self.nObs:
             raise self.StaticObsError("len(values)==self.nObs")
-        if self.coordContinuous:
+        if self.isGridded:
             self.values=values
         else:
             self.values=values[order]
@@ -210,8 +231,8 @@ class StaticObs(object):
 
     def __str__(self):
         output="____| StaticObs |___________________________"
-        if self.coordContinuous:
-            output+="\n   continuous observations\n"
+        if self.isGridded:
+            output+="\n   gridded observations\n"
             output+=self.grid.__str__()
         else:
             output+="\n   discrete observations"
