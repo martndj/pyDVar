@@ -4,6 +4,7 @@ import random as rnd
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
+import pickle
 
 #-----------------------------------------------------------
 #----| Utilitaries |----------------------------------------
@@ -73,6 +74,24 @@ def obsOp_Coord_Adj(obs, g, obsCoord):
     for i in xrange(nObs):
         H[i, idxObs[i]]=1.
     return np.dot(H.T,obs)
+
+#=====================================================================
+#----| External loading function |------------------------------------
+#=====================================================================
+
+def loadStaticObs(fun):
+
+    isGridded=pickle.load(fun)
+    coord=pickle.load(fun)
+    metric=pickle.load(fun)
+    obsOp=pickle.load(fun)
+    obsOpArgs=pickle.load(fun)
+    obsOpTLMAdj=pickle.load(fun)
+    values=pickle.load(fun)
+
+    sObs=StaticObs(coord, values, obsOp=obsOp, obsOpTLMAdj=obsOpTLMAdj,
+                    obsOpArgs=obsOpArgs, metric=metric)
+    return sObs
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -146,7 +165,7 @@ class StaticObs(object):
         elif isinstance(metric, np.ndarray):
             if metric.ndim==1:
                 self.metric=np.diag(metric)
-            elif metric.ndom==2:
+            elif metric.ndim==2:
                 self.metric=metric
             else:
                 raise self.StaticObsError("metric.ndim=[1|2]")
@@ -197,6 +216,20 @@ class StaticObs(object):
             raise self.StaticObsError("g <Grid>")
         return g.x[self.__pos2Idx(g)]
 
+    #------------------------------------------------------
+
+    def dump(self, fun):
+        pickle.dump(self.isGridded, fun)
+        if self.isGridded:
+            pickle.dump(self.grid, fun)
+        else:
+            pickle.dump(self.coord, fun)
+        pickle.dump(self.metric, fun)
+        pickle.dump(self.obsOp, fun)
+        pickle.dump(self.obsOpArgs, fun)
+        pickle.dump(self.obsOpTLMAdj, fun)
+        pickle.dump(self.values, fun)
+
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
@@ -244,8 +277,20 @@ class StaticObs(object):
         return output
 
 
+#=====================================================================
+#----| External loading function |------------------------------------
+#=====================================================================
 
+def loadTWObs(fun):
 
+    nTimes=pickle.load(fun)
+    times=pickle.load(fun)
+    d_Obs={}
+    for i in xrange(nTimes):
+        d_Obs[times[i]]=loadStaticObs(fun)
+
+    TWObs=TimeWindowObs(d_Obs) 
+    return TWObs
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
@@ -337,6 +382,14 @@ class TimeWindowObs(object):
             d_inno[t]=self.d_Obs[t].values-d_Hx[t]
         return d_inno
         
+    #------------------------------------------------------
+
+    def dump(self, fun):
+        pickle.dump(self.nTimes, fun)
+        pickle.dump(self.times, fun)
+        for i in xrange(self.nTimes):      
+            self.d_Obs[self.times[i]].dump(fun)        
+
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
