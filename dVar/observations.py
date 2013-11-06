@@ -75,23 +75,6 @@ def obsOp_Coord_Adj(obs, g, obsCoord):
         H[i, idxObs[i]]=1.
     return np.dot(H.T,obs)
 
-#=====================================================================
-#----| External loading function |------------------------------------
-#=====================================================================
-
-def loadStaticObs(fun):
-
-    isGridded=pickle.load(fun)
-    coord=pickle.load(fun)
-    metric=pickle.load(fun)
-    obsOp=pickle.load(fun)
-    obsOpArgs=pickle.load(fun)
-    obsOpTLMAdj=pickle.load(fun)
-    values=pickle.load(fun)
-
-    sObs=StaticObs(coord, values, obsOp=obsOp, obsOpTLMAdj=obsOpTLMAdj,
-                    obsOpArgs=obsOpArgs, metric=metric)
-    return sObs
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -276,21 +259,22 @@ class StaticObs(object):
         output+="\n____________________________________________"
         return output
 
-
-#=====================================================================
-#----| External loading function |------------------------------------
 #=====================================================================
 
-def loadTWObs(fun):
+def loadStaticObs(fun):
 
-    nTimes=pickle.load(fun)
-    times=pickle.load(fun)
-    d_Obs={}
-    for i in xrange(nTimes):
-        d_Obs[times[i]]=loadStaticObs(fun)
+    isGridded=pickle.load(fun)
+    coord=pickle.load(fun)
+    metric=pickle.load(fun)
+    obsOp=pickle.load(fun)
+    obsOpArgs=pickle.load(fun)
+    obsOpTLMAdj=pickle.load(fun)
+    values=pickle.load(fun)
 
-    TWObs=TimeWindowObs(d_Obs) 
-    return TWObs
+    sObs=StaticObs(coord, values, obsOp=obsOp, obsOpTLMAdj=obsOpTLMAdj,
+                    obsOpArgs=obsOpArgs, metric=metric)
+    return sObs
+
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
@@ -436,6 +420,18 @@ class TimeWindowObs(object):
         output+="\n================================================"
         return output
 
+#=====================================================================
+
+def loadTWObs(fun):
+
+    nTimes=pickle.load(fun)
+    times=pickle.load(fun)
+    d_Obs={}
+    for i in xrange(nTimes):
+        d_Obs[times[i]]=loadStaticObs(fun)
+
+    TWObs=TimeWindowObs(d_Obs) 
+    return TWObs
 
 #=====================================================================
 #---------------------------------------------------------------------

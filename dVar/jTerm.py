@@ -3,6 +3,76 @@ import scipy.optimize as sciOpt
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
+import pickle
+
+class JMinimum(object):
+    """
+    Minimisation result of a JTerm
+    """
+    #------------------------------------------------------
+    #----| Init |------------------------------------------
+    #------------------------------------------------------
+    def __init__(self, xOpt, fOpt, gOpt, BOpt,
+                    fCalls, gCalls, 
+                    warnFlag, maxiter, 
+                    retall=False, allvecs=None):
+        if retall and allvecs==None:
+            raise Exception()
+        self.xOpt=xOpt
+        self.fOpt=fOpt
+        self.gOpt=gOpt
+        self.BOpt=BOpt
+        self.fCalls=fCalls
+        self.gCalls=gCalls
+        self.warnFlag=warnFlag
+        self.maxiter=maxiter
+        self.retall=retall
+        if self.retall:
+            self.allvecs=allvecs
+
+        self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
+
+    #------------------------------------------------------
+
+    def dump(self, fun):
+        pickle.dump(self.xOpt, fun)
+        pickle.dump(self.fOpt, fun)
+        pickle.dump(self.gOpt, fun)
+        pickle.dump(self.BOpt, fun)
+        pickle.dump(self.fCalls, fun)
+        pickle.dump(self.gCalls, fun)
+        pickle.dump(self.warnFlag, fun)
+        pickle.dump(self.maxiter, fun)
+        pickle.dump(self.retall, fun)
+        if self.retall:
+            pickle.dump(self.allvecs, fun)
+        
+#---------------------------------------------------------------------
+
+def loadJMinimum(fun):
+    
+    xOpt=pickle.load(fun)
+    fOpt=pickle.load(fun)
+    gOpt=pickle.load(fun)
+    BOpt=pickle.load(fun)
+    fCalls=pickle.load(fun)
+    gCalls=pickle.load(fun)
+    warnFlag=pickle.load(fun)
+    maxiter=pickle.load(fun)
+    retall=pickle.load(fun)
+    if retall:
+        allvecs=pickle.load(fun)
+    else:
+        allvecs=None
+    jMin=JMinimum(xOpt, fOpt, gOpt, BOpt,
+                    fCalls, gCalls, 
+                    warnFlag, maxiter, 
+                    retall=retall, allvecs=allvecs)
+    return jMin
+    
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
 
 class JTerm(object):
     """
@@ -53,22 +123,12 @@ class JTerm(object):
 
     #------------------------------------------------------
 
-    def setMinimizer(self, minimizer=None):
-        if minimizer==None:
-            self.minimizer=sciOpt.fmin_bfgs
-        else:
-            if not callable(minimizer):
-                raise self.JTermError("minimizer <function>")
-            self.minimizer=minimizer
-    
-    #------------------------------------------------------
 
-    def minimize(self, x_fGuess, minimizer=None, 
-                    maxiter=50, retall=True,
+    def minimize(self, x_fGuess, maxiter=50, retall=True,
                     testGrad=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
 
-        self.setMinimizer(minimizer)
+        self.minimizer=sciOpt.fmin_bfgs
 
         if x_fGuess.dtype<>'float64':
             raise self.JTermError("x_fGuess.dtype=='float64'")
@@ -83,23 +143,22 @@ class JTerm(object):
                                         maxiter=maxiter,
                                         retall=retall,
                                         full_output=True)
-        self.analysis=minimizeReturn[0]
-        self.fOpt=minimizeReturn[1]
-        self.gOpt=minimizeReturn[2]
-        self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
-        self.fCalls=minimizeReturn[-4]
-        self.gCalls=minimizeReturn[-3]
-        self.warnFlag=minimizeReturn[-2]
         if retall:
-            self.allvecs=minimizeReturn[-1]
+            allvecs=minimizeReturn[7]
+        else:
+            allvecs=None
 
+        self.minimum=JMinimum(
+            minimizeReturn[0], minimizeReturn[1], minimizeReturn[2],
+            minimizeReturn[3], minimizeReturn[4], minimizeReturn[5],
+            minimizeReturn[6], maxiter, retall, allvecs)
+
+        self.analysis=self.minimum.xOpt
         self.isMinimized=True
-        self.retall=retall
-        self.maxiter=maxiter
 
         #----| Final Gradient test |--------------
         if testGrad:
-            if self.warnFlag==2:
+            if self.minimum.warnFlag==2:
                 print("Gradient and/or function calls not changing:")
                 print(" not performing final gradient test.")
             else:
@@ -110,12 +169,12 @@ class JTerm(object):
     #------------------------------------------------------
 
     def convergence(self):
-        if not (self.isMinimized and self.retall):
+        if not (self.isMinimized and self.minimum.retall):
             raise self.JTermError(
                 "Must be minimized and with retall=True")
         self.Jval=[]
-        for i in xrange(len(self.allvecs)):
-            self.Jval.append(self.J(self.allvecs[i]))
+        for i in xrange(len(self.minimum.allvecs)):
+            self.Jval.append(self.J(self.minimum.allvecs[i]))
         return self.Jval
 
     #------------------------------------------------------
