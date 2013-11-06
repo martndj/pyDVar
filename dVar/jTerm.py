@@ -15,8 +15,8 @@ class JMinimum(object):
     def __init__(self, xOpt, fOpt, gOpt, BOpt,
                     fCalls, gCalls, 
                     warnFlag, maxiter, 
-                    retall=False, allvecs=None):
-        if retall and allvecs==None:
+                    allvecs=None, convergence=None):
+        if ((not convergence==None) and (allvecs==None)):
             raise Exception()
         self.xOpt=xOpt
         self.fOpt=fOpt
@@ -26,9 +26,8 @@ class JMinimum(object):
         self.gCalls=gCalls
         self.warnFlag=warnFlag
         self.maxiter=maxiter
-        self.retall=retall
-        if self.retall:
-            self.allvecs=allvecs
+        self.allvecs=allvecs
+        self.convergence=convergence
 
         self.gOptNorm=np.sqrt(np.dot(self.gOpt,self.gOpt))
 
@@ -43,9 +42,8 @@ class JMinimum(object):
         pickle.dump(self.gCalls, fun)
         pickle.dump(self.warnFlag, fun)
         pickle.dump(self.maxiter, fun)
-        pickle.dump(self.retall, fun)
-        if self.retall:
-            pickle.dump(self.allvecs, fun)
+        pickle.dump(self.allvecs, fun)
+        pickle.dump(self.convergence, fun)
         
 #---------------------------------------------------------------------
 
@@ -59,15 +57,12 @@ def loadJMinimum(fun):
     gCalls=pickle.load(fun)
     warnFlag=pickle.load(fun)
     maxiter=pickle.load(fun)
-    retall=pickle.load(fun)
-    if retall:
-        allvecs=pickle.load(fun)
-    else:
-        allvecs=None
+    allvecs=pickle.load(fun)
+    convergence=pickle.load(fun)
     jMin=JMinimum(xOpt, fOpt, gOpt, BOpt,
                     fCalls, gCalls, 
                     warnFlag, maxiter, 
-                    retall=retall, allvecs=allvecs)
+                    allvecs=allvecs, convergence=convergence)
     return jMin
     
 #=====================================================================
@@ -125,9 +120,10 @@ class JTerm(object):
 
 
     def minimize(self, x_fGuess, maxiter=50, retall=True,
-                    testGrad=True, 
+                    testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
 
+        self.retall=retall
         self.minimizer=sciOpt.fmin_bfgs
 
         if x_fGuess.dtype<>'float64':
@@ -140,18 +136,21 @@ class JTerm(object):
         #----| Minimizing |-----------------------
         minimizeReturn=self.minimizer(self.J, x_fGuess, args=self.args,
                                         fprime=self.gradJ,  
-                                        maxiter=maxiter,
-                                        retall=retall,
+                                        maxiter=maxiter, retall=self.retall,
                                         full_output=True)
-        if retall:
+        if self.retall:
             allvecs=minimizeReturn[7]
+            if convergence:
+                convJVal=self.__convergence(allvecs)
         else:
             allvecs=None
+            convJVal=None
 
         self.minimum=JMinimum(
             minimizeReturn[0], minimizeReturn[1], minimizeReturn[2],
             minimizeReturn[3], minimizeReturn[4], minimizeReturn[5],
-            minimizeReturn[6], maxiter, retall, allvecs)
+            minimizeReturn[6], maxiter,
+            allvecs=allvecs, convergence=convJVal)
 
         self.analysis=self.minimum.xOpt
         self.isMinimized=True
@@ -165,17 +164,55 @@ class JTerm(object):
                 self.gradTest(self.analysis,
                             powRange=[testGradMinPow, testGradMaxPow])
 
+        return minimizeReturn
 
     #------------------------------------------------------
 
-    def convergence(self):
-        if not (self.isMinimized and self.minimum.retall):
-            raise self.JTermError(
-                "Must be minimized and with retall=True")
-        self.Jval=[]
-        for i in xrange(len(self.minimum.allvecs)):
-            self.Jval.append(self.J(self.minimum.allvecs[i]))
-        return self.Jval
+    def gradTest(self, x, output=True, powRange=[-1,-14]):
+        J0=self.J(x)
+        gradJ0=self.gradJ(x)
+        n2GradJ0=np.dot(gradJ0, gradJ0)
+
+        test={}
+        for power in xrange(powRange[0],powRange[1], -1):
+            eps=10.**(power)
+            Jeps=self.J(x-eps*gradJ0)
+            
+            res=((J0-Jeps)/(eps*n2GradJ0))
+            test[power]=[Jeps, res]
+
+        if output:
+            print("----| Gradient test |------------------")
+            print("  J0      =%+25.15f"%J0)
+            print(" |grad|^2 =%+25.15f"%n2GradJ0)
+            for i in  (np.sort(test.keys())[::-1]):
+                print("%4d %+25.15f  %+25.15f"%(i, test[i][0], test[i][1]))
+
+        return (J0, n2GradJ0, test)
+
+    #------------------------------------------------------
+
+    def plotCostFunc(self, x, epsMin=-1., epsMax=1., nDx=10, axe=None):
+        axe=self._checkAxe(axe) 
+        
+        dx=(epsMax-epsMin)/nDx
+        J=np.zeros(nDx)
+        xPlusDx=np.linspace(epsMin, epsMax, nDx)
+        grad=self.gradJ(x)
+        for i in xrange(nDx):
+            alpha=epsMin+i*dx
+            J[i]=self.J(x+alpha*grad)
+        axe.plot(xPlusDx,J, '^-')
+        return xPlusDx, J
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __convergence(self, allvecs):
+        convJVal=[]
+        for i in xrange(len(allvecs)):
+            convJVal.append(self.J(allvecs[i]))
+        return convJVal
 
     #------------------------------------------------------
     #----| Classical overloads |----------------------------
@@ -222,44 +259,6 @@ class JTerm(object):
 
         JMult=JTerm(CFMult, gradCFMult)
         return JMult
-    #------------------------------------------------------
-
-    def gradTest(self, x, output=True, powRange=[-1,-14]):
-        J0=self.J(x)
-        gradJ0=self.gradJ(x)
-        n2GradJ0=np.dot(gradJ0, gradJ0)
-
-        test={}
-        for power in xrange(powRange[0],powRange[1], -1):
-            eps=10.**(power)
-            Jeps=self.J(x-eps*gradJ0)
-            
-            res=((J0-Jeps)/(eps*n2GradJ0))
-            test[power]=[Jeps, res]
-
-        if output:
-            print("----| Gradient test |------------------")
-            print("  J0      =%+25.15f"%J0)
-            print(" |grad|^2 =%+25.15f"%n2GradJ0)
-            for i in  (np.sort(test.keys())[::-1]):
-                print("%4d %+25.15f  %+25.15f"%(i, test[i][0], test[i][1]))
-
-        return (J0, n2GradJ0, test)
-
-    #------------------------------------------------------
-
-    def plotCostFunc(self, x, epsMin=-1., epsMax=1., nDx=10, axe=None):
-        axe=self._checkAxe(axe) 
-        
-        dx=(epsMax-epsMin)/nDx
-        J=np.zeros(nDx)
-        xPlusDx=np.linspace(epsMin, epsMax, nDx)
-        grad=self.gradJ(x)
-        for i in xrange(nDx):
-            alpha=epsMin+i*dx
-            J[i]=self.J(x+alpha*grad)
-        axe.plot(xPlusDx,J, '^-')
-        return xPlusDx, J
             
     
     #-------------------------------------------------------
