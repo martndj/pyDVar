@@ -145,6 +145,8 @@ class StaticObs(object):
 
         if metric==None:
             self.metric=np.eye(self.nObs)
+        elif isinstance(metric, (float, int)):
+            self.metric=metric*np.eye(self.nObs)
         elif isinstance(metric, np.ndarray):
             if metric.ndim==1:
                 self.metric=np.diag(metric)
