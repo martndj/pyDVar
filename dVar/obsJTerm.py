@@ -205,7 +205,6 @@ if __name__=='__main__':
     import matplotlib.pyplot as plt
     from observations import degrad, obsOp_Coord, obsOp_Coord_Adj
     import pyKdV as kdv
-    from jTerm import TrivialJTerm
     
     minimize=True
     staticObs=False
@@ -241,9 +240,6 @@ if __name__=='__main__':
     
         #----| Second test: with null background term
         #   the background term will constraint toward 0
-        Jbkg=TrivialJTerm()
-        JSum=JObs1+Jbkg*3.
-        JSum.minimize(x0_degrad)
         
         plt.figure()
         plt.plot(g.x, x0_truth, 'k', linewidth=2)
@@ -251,7 +247,6 @@ if __name__=='__main__':
         plt.plot(g.x, JObs1.analysis, 'g')
         plt.plot(g.x, JObs2.analysis, 'm')
         plt.plot(JObs2.obs.interpolate(g), JObs2.obs.values, 'mo')
-        plt.plot(g.x, JSum.analysis, 'r')
     
     if TWObs:
         print("\n\n=======================================================")

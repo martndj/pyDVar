@@ -1,4 +1,5 @@
 from observations import StaticObs, TimeWindowObs
+from jTerm import JMinimum
 from obsJTerm import TWObsJTerm
 import numpy as np
 
@@ -31,8 +32,6 @@ class PrecondTWObsJTerm(TWObsJTerm):
         J(xi)= xi'xi + 0.5*(y-H(x))'R{-1}(y-H(x))
         x=B^{1/2}xi+x_b
 
-    Using PrecondTWObsJTerm() we can represent the background term with
-    TrivialJTerm() and sum them.
     """
     
     class PrecondTWObsJTermError(Exception):
@@ -63,6 +62,11 @@ class PrecondTWObsJTerm(TWObsJTerm):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
+    def __BSqrt(self, xi):
+        return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
+
+    #------------------------------------------------------
+
     def __xValidate(self, xi):
         if not isinstance(xi, np.ndarray):
             raise self.PrecondTWObsJTermError("xi <numpy.array>")
@@ -81,7 +85,7 @@ class PrecondTWObsJTerm(TWObsJTerm):
     def J(self, xi): 
         self.__xValidate(xi)
         x=self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
-        return super(PrecondTWObsJTerm, self).J(x)
+        return super(PrecondTWObsJTerm, self).J(x)+0.5*np.dot(xi,xi)
     #------------------------------------------------------
 
     def gradJ(self, xi):
@@ -89,18 +93,28 @@ class PrecondTWObsJTerm(TWObsJTerm):
         x=self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
 
         dx0=super(PrecondTWObsJTerm, self).gradJ(x)
-        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)
+        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
     #------------------------------------------------------
 
-    def minimize(self, xi, minimizer=None, 
-                    maxiter=50, retall=True, testGrad=True, 
-                    testGradMinPow=-1, testGradMaxPow=-14):
-        super(PrecondTWObsJTerm, self).minimize(xi, minimizer,
-                                                maxiter, retall,
-                                                testGrad, 
-                                                testGradMinPow, 
-                                                testGradMaxPow)
-        self.x_a=self.B_sqrt(self.analysis, *self.B_sqrtArgs)+self.x_bkg
+    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
+
+        if self.retall:
+            allvecs=[]
+            allvecs_precond=minimizeReturn[7]
+            for vec in allvecs_precond:
+                allvecs.append(self.__BSqrt(vec))
+            if convergence:
+                convJVal=self.jAllvecs(allvecs_precond)
+        else:
+            allvecs=None
+            convJVal=None
+
+        self.minimum=JMinimum(
+            self.__BSqrt(minimizeReturn[0]), minimizeReturn[1],
+            minimizeReturn[2], minimizeReturn[3], 
+            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
+            maxiter, allvecs=allvecs, convergence=convJVal)
+
 
     #------------------------------------------------------
     #----| Classical overloads |----------------------------
@@ -134,7 +148,6 @@ if __name__=='__main__':
                                     fCorr_isoHomo,\
                                     rCTilde_sqrt_isoHomo
     import pyKdV as kdv
-    from jTerm import TrivialJTerm
     from pseudoSpec1D import PeriodicGrid 
     
     Ntrc=100
@@ -177,18 +190,12 @@ if __name__=='__main__':
     B_sqrtArgs=(var, rCTilde_sqrt)
     xi0=np.zeros(g.N)
 
-    JPTWObs=PrecondTWObsJTerm(timeObs, model, tlm, 
+    J=PrecondTWObsJTerm(timeObs, model, tlm, 
                         x0_bkg, B_sqrt_op, B_sqrt_op_Adj, B_sqrtArgs) 
 
-    # J=0.5<xi.T,xi>+0.5<(y-H(x)).T,R_inv(y-H(x))>
-    #   x=B_sqrt(xi)+x_bkg
-    Jxi=TrivialJTerm()
-    J=Jxi+JPTWObs
-    # the scaling compensate the huge number of observations making
-    # JPTWObs >> Jxi 
 
     J.minimize(x0_bkg)
-    x0_a=B_sqrt_op(J.analysis, *B_sqrtArgs)+x0_bkg
+    x0_a=J.analysis
     x_a=model.integrate(x0_a,  tInt)
 
     nSubRow=3

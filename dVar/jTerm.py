@@ -138,20 +138,8 @@ class JTerm(object):
                                         fprime=self.gradJ,  
                                         maxiter=maxiter, retall=self.retall,
                                         full_output=True)
-        if self.retall:
-            allvecs=minimizeReturn[7]
-            if convergence:
-                convJVal=self.__convergence(allvecs)
-        else:
-            allvecs=None
-            convJVal=None
 
-        self.minimum=JMinimum(
-            minimizeReturn[0], minimizeReturn[1], minimizeReturn[2],
-            minimizeReturn[3], minimizeReturn[4], minimizeReturn[5],
-            minimizeReturn[6], maxiter,
-            allvecs=allvecs, convergence=convJVal)
-
+        self.createMinimum(minimizeReturn, maxiter, convergence=convergence)
         self.analysis=self.minimum.xOpt
         self.isMinimized=True
 
@@ -164,9 +152,25 @@ class JTerm(object):
                 self.gradTest(self.analysis,
                             powRange=[testGradMinPow, testGradMaxPow])
 
-        return minimizeReturn
 
-    #------------------------------------------------------
+    #-----------------------------------------------------
+
+    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
+        if self.retall:
+            allvecs=minimizeReturn[7]
+            if convergence:
+                convJVal=self.jAllvecs(allvecs)
+        else:
+            allvecs=None
+            convJVal=None
+
+        self.minimum=JMinimum(
+            minimizeReturn[0], minimizeReturn[1], minimizeReturn[2],
+            minimizeReturn[3], minimizeReturn[4], minimizeReturn[5],
+            minimizeReturn[6], maxiter,
+            allvecs=allvecs, convergence=convJVal)
+
+    #-----------------------------------------------------
 
     def gradTest(self, x, output=True, powRange=[-1,-14]):
         J0=self.J(x)
@@ -208,7 +212,7 @@ class JTerm(object):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __convergence(self, allvecs):
+    def jAllvecs(self, allvecs):
         convJVal=[]
         for i in xrange(len(allvecs)):
             convJVal.append(self.J(allvecs[i]))
