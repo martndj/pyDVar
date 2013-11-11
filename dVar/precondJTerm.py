@@ -246,33 +246,6 @@ if __name__=='__main__':
     Ntrc=100
     L=300.
     g=PeriodicGrid(Ntrc, L)
-    
-    kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=15.
-
-    model=kdv.kdvLauncher(kdvParam, maxA=4.)
-    tlm=kdv.kdvTLMLauncher(kdvParam)
-    
-    base=kdv.rndSpecVec(g, Ntrc=10,  amp=0.4)
-    soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
-    longWave=0.8*kdv.gauss(g.x, 40., 20. )-0.5*kdv.gauss(g.x, -20., 14. )
-
-    x0_truth=soliton
-    x_truth=model.integrate(x0_truth, tInt)
-
-    x0_bkg=np.zeros(g.N)
-    x_bkg=model.integrate(x0_bkg, tInt)
-
-    
-    nObsTime=9
-    nPosObs=50
-    d_Obs={}
-    for i in xrange(nObsTime):
-        t=tInt*(i+1)/nObsTime
-        obsPos=np.linspace(-g.L/2., g.L/2.-g.dx, nPosObs)
-        obsValues=obsOp_Coord(x_truth.whereTime(t), g, obsPos)
-        d_Obs[t]=StaticObs(obsPos, obsValues, obsOp_Coord, obsOp_Coord_Adj)
-    timeObs=TimeWindowObs(d_Obs)
 
     #----| Preconditionning |-----------
     Lc=10.
@@ -283,38 +256,89 @@ if __name__=='__main__':
     B_sqrtArgs=(var, rCTilde_sqrt)
     xi0=np.zeros(g.N)
 
-    J=PrecondTWObsJTerm(timeObs, model, tlm, 
-                        x0_bkg, B_sqrt_op, B_sqrt_op_Adj, B_sqrtArgs) 
+    x0_bkg=np.zeros(g.N)
 
+    testStaticObs=True
+    testTWObs=False
 
-    J.minimize(x0_bkg)
-    x0_a=J.analysis
-    x_a=model.integrate(x0_a,  tInt)
+    if  testStaticObs:
+        coord=np.zeros(1)
+        value=np.zeros(1)
+        value[0]=1.
+        obs=StaticObs(coord, value, obsOp=obsOp_Coord,
+                            obsOpTLMAdj=obsOp_Coord_Adj)
+        J=PrecondStaticObsJTerm(obs, g, x0_bkg, B_sqrt_op,
+                                        B_sqrt_op_Adj, B_sqrtArgs)
+        J.minimize(x0_bkg)
 
-    nSubRow=3
-    nSubLine=timeObs.nTimes/nSubRow+1
-    if timeObs.nTimes%nSubRow: nSubLine+=1
-    plt.figure(figsize=(12.,12.))
-    i=0
-    for t in timeObs.times:
-        i+=1
-        sub=plt.subplot(nSubLine, nSubRow, nSubRow+i)
-        sub.plot(g.x, x_truth.whereTime(t), 'g')
-        sub.plot(timeObs[t].interpolate(g), timeObs[t].values, 'go')
-        sub.plot(g.x, x_bkg.whereTime(t), 'b')
-        sub.plot(timeObs[t].interpolate(g), 
-                    x_bkg.whereTime(t)[g.pos2Idx(timeObs[t].coord)], 'bo')
-        sub.set_title("$t=%f$"%t)
-        if i==timeObs.nTimes:
-            sub.legend(["$x_{t}$",  "$y$", "$x_b$", 
-                        "$H(x_b)$"], loc="lower left")
-    sub=plt.subplot(nSubLine, 1,1)
-    sub.plot(g.x, x0_truth, 'k--')
-    sub.plot(g.x, x0_bkg, 'b--')
-    sub.plot(g.x, x0_a, 'r--')
-    sub.plot(g.x, x_truth.final, 'k')
-    sub.plot(g.x, x_bkg.final, 'b')
-    sub.plot(g.x, x_a.final, 'r')
-    sub.legend(["${x_t}_0$","${x_b}_0$","${x_a}_0$",
-                "${x_t}_f$","${x_b}_f$","${x_a}_f$"], loc='best')
-    plt.show()
+        plt.plot(g.x, J.analysis)
+        J.obs.plot(g)
+        plt.show()
+
+    if testTWObs:
+        
+        kdvParam=kdv.Param(g, beta=1., gamma=-1.)
+        tInt=15.
+    
+        model=kdv.kdvLauncher(kdvParam, maxA=4.)
+        tlm=kdv.kdvTLMLauncher(kdvParam)
+        
+        base=kdv.rndSpecVec(g, Ntrc=10,  amp=0.4)
+        soliton=kdv.soliton(g.x, 0., amp=1.5, beta=1., gamma=-1)
+        longWave=0.8*(kdv.gauss(g.x, 40., 20. )
+                        -0.5*kdv.gauss(g.x, -20., 14. ))
+    
+        x0_truth=soliton
+        x_truth=model.integrate(x0_truth, tInt)
+    
+        x_bkg=model.integrate(x0_bkg, tInt)
+    
+        
+        nObsTime=9
+        nPosObs=50
+        d_Obs={}
+        for i in xrange(nObsTime):
+            t=tInt*(i+1)/nObsTime
+            obsPos=np.linspace(-g.L/2., g.L/2.-g.dx, nPosObs)
+            obsValues=obsOp_Coord(x_truth.whereTime(t), g, obsPos)
+            d_Obs[t]=StaticObs(obsPos, obsValues, obsOp_Coord,
+                                obsOp_Coord_Adj)
+        timeObs=TimeWindowObs(d_Obs)
+    
+    
+        J=PrecondTWObsJTerm(timeObs, model, tlm, 
+                            x0_bkg, B_sqrt_op, B_sqrt_op_Adj, B_sqrtArgs) 
+    
+    
+        J.minimize(x0_bkg)
+        x0_a=J.analysis
+        x_a=model.integrate(x0_a,  tInt)
+    
+        nSubRow=3
+        nSubLine=timeObs.nTimes/nSubRow+1
+        if timeObs.nTimes%nSubRow: nSubLine+=1
+        plt.figure(figsize=(12.,12.))
+        i=0
+        for t in timeObs.times:
+            i+=1
+            sub=plt.subplot(nSubLine, nSubRow, nSubRow+i)
+            sub.plot(g.x, x_truth.whereTime(t), 'g')
+            sub.plot(timeObs[t].interpolate(g), timeObs[t].values, 'go')
+            sub.plot(g.x, x_bkg.whereTime(t), 'b')
+            sub.plot(timeObs[t].interpolate(g), 
+                        x_bkg.whereTime(t)[g.pos2Idx(timeObs[t].coord)], 
+                        'bo')
+            sub.set_title("$t=%f$"%t)
+            if i==timeObs.nTimes:
+                sub.legend(["$x_{t}$",  "$y$", "$x_b$", 
+                            "$H(x_b)$"], loc="lower left")
+        sub=plt.subplot(nSubLine, 1,1)
+        sub.plot(g.x, x0_truth, 'k--')
+        sub.plot(g.x, x0_bkg, 'b--')
+        sub.plot(g.x, x0_a, 'r--')
+        sub.plot(g.x, x_truth.final, 'k')
+        sub.plot(g.x, x_bkg.final, 'b')
+        sub.plot(g.x, x_a.final, 'r')
+        sub.legend(["${x_t}_0$","${x_b}_0$","${x_a}_0$",
+                    "${x_t}_f$","${x_b}_f$","${x_a}_f$"], loc='best')
+        plt.show()
