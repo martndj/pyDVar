@@ -5,8 +5,8 @@ def gauss(x, x0, sig):
     return np.exp(-((x-x0)**2)/(2*sig**2))
 
 
-def fCorr_isoHomo(g, sig):
-    return gauss(g.x, 0., sig)
+def fCorr_isoHomo(g, sig, x0=0.):
+    return gauss(g.x, x0, sig)
 
 def rCTilde_sqrt_isoHomo(g, fCorr):
     """
@@ -65,6 +65,9 @@ def B_sqrt_op_Adj(x, var, rCTilde_sqrt):
     xiR=r2c_Adj(xiC)            #   2.T
     return rCTilde_sqrt*xiR     #   1.T
 
+def B_op(x, var, rCTilde_sqrt):
+    return B_sqrt_op(B_sqrt_op_Adj(x, var, rCTilde_sqrt),
+                        var, rCTilde_sqrt)
 
 
 if __name__=='__main__':
@@ -75,19 +78,19 @@ if __name__=='__main__':
     
     N=11
     mu=1.
-    sig=1.
+    sigRnd=1.
     
     
     
     x=np.empty(N, dtype='complex')
     y=np.empty(N)
     
-    x[0]=rnd.gauss(mu, sig)
+    x[0]=rnd.gauss(mu, sigRnd)
     for i in xrange(1,(N-1)/2+1):
-        x[i]=rnd.gauss(mu, sig)+1j*rnd.gauss(mu,sig)
+        x[i]=rnd.gauss(mu, sigRnd)+1j*rnd.gauss(mu,sigRnd)
         x[N-i]=x[i].real-1j*x[i].imag
     for i in xrange(N):
-        y[i]=rnd.gauss(mu, sig)
+        y[i]=rnd.gauss(mu, sigRnd)
     
     print("Testing adjoint of r2c()")
     print(np.dot(x.conj(), r2c(y))-np.dot(r2c_Adj(x),y))
@@ -103,17 +106,12 @@ if __name__=='__main__':
     g=PeriodicGrid(Ng, 100., aliasing=1)
     
     
-    sig=1.
+    sig=5.
     lCorr=5.
     variances=sig*np.ones(g.N)
     fCorr=fCorr_isoHomo(g, lCorr)
     CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
     
-    # correlation test
-    xDirac=np.zeros(g.N)
-    xDirac[Ng/4]=1.
-    xiTest=B_sqrt_op_Adj(xDirac,  variances, CTilde_sqrt)
-    xTest=B_sqrt_op(xiTest, variances, CTilde_sqrt)
     
     # adjoint test
     rnd.seed(0.4573216806)
@@ -131,8 +129,21 @@ if __name__=='__main__':
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
     print(testDirect-testAdjoint)
     
-    
-    #plt.plot(g.x, xTest/sig**2)
-    plt.plot(g.x, xTest)
-    plt.plot(g.x, fCorr)
+    # correlation test
+    xDirac=np.zeros(g.N)
+    NDirac=Ng/4
+    xDirac[NDirac]=1.
+    x0Dirac=g.x[NDirac]
+    xTest=B_op(xDirac, variances, CTilde_sqrt)
+        
+
+    plt.figure()
+    plt.subplot(211)
+    plt.plot(g.x, xTest, 'b')
+    plt.plot(g.x, sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'g')
+    plt.legend([r'$ B(\delta(x-x_0))$', r'$\sigma^2f_{corr}(x-x_0)$'],
+                loc='best')
+    plt.title(r'$\sigma=%.1f$'%sig)
+    plt.subplot(212)
+    plt.plot(g.x, xTest-sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'r')
     plt.show()
