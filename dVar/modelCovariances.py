@@ -1,5 +1,6 @@
 import numpy as np
 from canonicalInjection import *
+from spectralLib import *
 
 def gauss(x, x0, sig):
     return np.exp(-((x-x0)**2)/(2*sig**2))
@@ -34,6 +35,9 @@ def rCTilde_sqrt_isoHomo(g, fCorr):
         rCTilde[2*i-1]=np.abs(rFTilde[2*i-1])
         rCTilde[2*i]=np.abs(rFTilde[2*i-1])
     
+    if rCTilde.min()<0.:
+        raise Exception(
+        "rCTilde<0: square root complex => saddle point => big problem!")
     rCTilde_sqrt=np.sqrt(rCTilde)
     return rCTilde_sqrt
 
@@ -45,7 +49,7 @@ def ifft_Adj(x):
     xi=xi/N
     return xi
 
-def B_sqrt_op(xi, var, rCTilde_sqrt):
+def B_sqrt_op(xi, var, rCTilde_sqrt, aliasing=3):
     """
         B_{1/2} operator
 
@@ -54,13 +58,20 @@ def B_sqrt_op(xi, var, rCTilde_sqrt):
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
     """
+    Ntrc=(len(xi)-1)/3
+
     xiR=rCTilde_sqrt*xi         #   1
     xiC=r2c(xiR)                #   2
     x1=np.fft.ifft(xiC).real    #   3
-    return x1*var               #   4
+    x2=x1*var                   #   4
+    return specFilt(x2, Ntrc)   #   5
 
-def B_sqrt_op_Adj(x, var, rCTilde_sqrt):
-    x1=x*var                    #   4.T
+
+def B_sqrt_op_Adj(x, var, rCTilde_sqrt, aliasing=3):
+    Ntrc=(len(x)-1)/3
+
+    x2=specFilt(x, Ntrc)        #   5.T
+    x1=x2*var                   #   4.T
     xiC=ifft_Adj(x1)            #   3.T
     xiR=r2c_Adj(xiC)            #   2.T
     return rCTilde_sqrt*xiR     #   1.T

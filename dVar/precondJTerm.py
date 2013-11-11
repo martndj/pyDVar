@@ -1,9 +1,86 @@
 from observations import StaticObs, TimeWindowObs
-from jTerm import JMinimum
+from jTerm import JTerm, JMinimum
 from obsJTerm import TWObsJTerm, StaticObsJTerm
 import numpy as np
 
-class PrecondStaticObsJTerm(StaticObsJTerm):
+class PrecondJTerm(JTerm):
+    '''
+
+        <!> This is a master class not meant to be instantiated, only
+            subclasses should.
+    '''
+    class PrecondJTermError(Exception):
+        pass
+    
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+
+    def _xValidate(self, xi):
+        if not isinstance(xi, np.ndarray):
+            raise self.PrecondJTermError("xi <numpy.array>")
+        if not xi.dtype=='float64':
+            raise self.PrecondJTermError("xi.dtype=='float64'")
+        if xi.ndim<>1:
+            raise self.PrecondJTermError("xi.ndim==1")
+        if len(xi)<>self.modelGrid.N:
+            raise self.PrecondJTermError(
+                "len(xi)==self.grid.N")
+
+    #------------------------------------------------------
+    #----| Public methods |--------------------------------
+    #------------------------------------------------------
+    def BSqrt(self, xi):
+        return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
+
+    #------------------------------------------------------
+
+    def J(self, xi, normalize=False): 
+        self._xValidate(xi)
+        x=self.BSqrt(xi)
+        return super(PrecondJTerm, self).J(x)+0.5*np.dot(xi,xi)
+
+    #------------------------------------------------------
+
+    def gradJ(self, xi, normalize=False):
+        self._xValidate(xi)
+        x=self.BSqrt(xi)
+
+        dx0=super(PrecondJTerm, self).gradJ(x)
+        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+
+    #------------------------------------------------------
+    def minimize(self, x_fGuess, maxiter=50, retall=True,
+                    testGrad=True, convergence=True, 
+                    testGradMinPow=-1, testGradMaxPow=-14):
+        super(PrecondJTerm, self).minimize(
+                    x_fGuess, maxiter=50, retall=True,
+                    testGrad=True, convergence=True, 
+                    testGradMinPow=-1, testGradMaxPow=-14)
+        self.analysis=self.BSqrt(self.minimum.xOpt)
+#    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
+#
+#        if self.retall:
+#            allvecs=[]
+#            allvecs_precond=minimizeReturn[7]
+#            for vec in allvecs_precond:
+#                allvecs.append(self.BSqrt(vec))
+#            if convergence:
+#                convJVal=self.jAllvecs(allvecs_precond)
+#        else:
+#            allvecs=None
+#            convJVal=None
+#
+#        self.minimum=JMinimum(
+#            self.BSqrt(minimizeReturn[0]), minimizeReturn[1],
+#            minimizeReturn[2], minimizeReturn[3], 
+#            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
+#            maxiter, allvecs=allvecs, convergence=convJVal)
+
+
+        
+class PrecondStaticObsJTerm(PrecondJTerm, StaticObsJTerm):
     '''
     Preconditionned static observation JTerm subclass
     (classical 3D-Var context)
@@ -26,76 +103,18 @@ class PrecondStaticObsJTerm(StaticObsJTerm):
         self.B_sqrtAdj=B_sqrtAdj
         self.B_sqrtArgs=B_sqrtArgs
     
-        self.__xValidate(x_bkg)
+        self._xValidate(x_bkg)
         self.x_bkg=x_bkg
 
         self.isMinimized=False
         
-    #------------------------------------------------------
-    #----| Private methods |-------------------------------
-    #------------------------------------------------------
-
-    def __BSqrt(self, xi):
-        return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
-
-    #------------------------------------------------------
-
-    def __xValidate(self, xi):
-        if not isinstance(xi, np.ndarray):
-            raise self.PrecondStaticObsJTermError("xi <numpy.array>")
-        if not xi.dtype=='float64':
-            raise self.PrecondStaticObsJTermError("xi.dtype=='float64'")
-        if xi.ndim<>1:
-            raise self.PrecondStaticObsJTermError("xi.ndim==1")
-        if len(xi)<>self.modelGrid.N:
-            raise self.PrecondStaticObsJTermError(
-                "len(xi)==self.grid.N")
-
-    #------------------------------------------------------
-    #----| Public methods |--------------------------------
-    #------------------------------------------------------
-
-    def J(self, xi, normalize=False): 
-        self.__xValidate(xi)
-        x=self.__BSqrt(xi)
-        return super(PrecondStaticObsJTerm, self).J(x)+0.5*np.dot(xi,xi)
-
-    #------------------------------------------------------
-
-    def gradJ(self, xi, normalize=False):
-        self.__xValidate(xi)
-        x=self.__BSqrt(xi)
-
-        dx0=super(PrecondStaticObsJTerm, self).gradJ(x)
-        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
-
-    #------------------------------------------------------
-
-    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
-
-        if self.retall:
-            allvecs=[]
-            allvecs_precond=minimizeReturn[7]
-            for vec in allvecs_precond:
-                allvecs.append(self.__BSqrt(vec))
-            if convergence:
-                convJVal=self.jAllvecs(allvecs_precond)
-        else:
-            allvecs=None
-            convJVal=None
-
-        self.minimum=JMinimum(
-            self.__BSqrt(minimizeReturn[0]), minimizeReturn[1],
-            minimizeReturn[2], minimizeReturn[3], 
-            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
-            maxiter, allvecs=allvecs, convergence=convJVal)
 
 
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
 
-class PrecondTWObsJTerm(TWObsJTerm):
+class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
     """
     Preconditionned time window observations JTerm subclass
     (classical 4D-Var context)
@@ -147,66 +166,10 @@ class PrecondTWObsJTerm(TWObsJTerm):
         self.B_sqrtAdj=B_sqrtAdj
         self.B_sqrtArgs=B_sqrtArgs
     
-        self.__xValidate(x_bkg)
+        self._xValidate(x_bkg)
         self.x_bkg=x_bkg
 
         self.isMinimized=False
-    #------------------------------------------------------
-    #----| Private methods |-------------------------------
-    #------------------------------------------------------
-
-    def __BSqrt(self, xi):
-        return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
-
-    #------------------------------------------------------
-
-    def __xValidate(self, xi):
-        if not isinstance(xi, np.ndarray):
-            raise self.PrecondTWObsJTermError("xi <numpy.array>")
-        if not xi.dtype=='float64':
-            raise self.PrecondTWObsJTermError("xi.dtype=='float64'")
-        if xi.ndim<>1:
-            raise self.PrecondTWObsJTermError("xi.ndim==1")
-        if len(xi)<>self.nlModel.grid.N:
-            raise self.PrecondTWObsJTermError(
-                "len(xi)==self.nlModel.grid.N")
-
-    #------------------------------------------------------
-    #----| Public methods |--------------------------------
-    #------------------------------------------------------
-
-    def J(self, xi): 
-        self.__xValidate(xi)
-        x=self.__BSqrt(xi)
-        return super(PrecondTWObsJTerm, self).J(x)+0.5*np.dot(xi,xi)
-    #------------------------------------------------------
-
-    def gradJ(self, xi):
-        self.__xValidate(xi)
-        x=self.__BSqrt(xi)
-
-        dx0=super(PrecondTWObsJTerm, self).gradJ(x)
-        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
-    #------------------------------------------------------
-
-    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
-
-        if self.retall:
-            allvecs=[]
-            allvecs_precond=minimizeReturn[7]
-            for vec in allvecs_precond:
-                allvecs.append(self.__BSqrt(vec))
-            if convergence:
-                convJVal=self.jAllvecs(allvecs_precond)
-        else:
-            allvecs=None
-            convJVal=None
-
-        self.minimum=JMinimum(
-            self.__BSqrt(minimizeReturn[0]), minimizeReturn[1],
-            minimizeReturn[2], minimizeReturn[3], 
-            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
-            maxiter, allvecs=allvecs, convergence=convJVal)
 
 
     #------------------------------------------------------

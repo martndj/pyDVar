@@ -10,3 +10,4 @@ from observations import *
 from jTerm import *
 from obsJTerm import *
 from precondJTerm import *
+from spectralLib import *

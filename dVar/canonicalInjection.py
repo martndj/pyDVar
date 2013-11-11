@@ -41,3 +41,8 @@ def r2c_Adj(csp):
         # <!> carefull here: complex conjugate necessary!
     rsp[0]=csp[0].real
     return rsp
+
+
+def rTrunc(rsp, Ntrc):
+    rsp[2*Ntrc+1:]=0.
+    return rsp
