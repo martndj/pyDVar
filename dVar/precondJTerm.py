@@ -1,11 +1,104 @@
 from observations import StaticObs, TimeWindowObs
 from jTerm import JMinimum
-from obsJTerm import TWObsJTerm
+from obsJTerm import TWObsJTerm, StaticObsJTerm
 import numpy as np
+
+class PrecondStaticObsJTerm(StaticObsJTerm):
+    '''
+    Preconditionned static observation JTerm subclass
+    (classical 3D-Var context)
+    '''
+
+    #------------------------------------------------------
+    #----| Init |------------------------------------------
+    #------------------------------------------------------
+
+    def __init__(self, obs, g,
+                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()): 
+        
+        super(PrecondStaticObsJTerm, self).__init__(obs, g)  
+
+        if not (callable(B_sqrt) and callable(B_sqrtAdj)):
+            raise self.PrecondStaticObsJTermError("B_sqrt[Adj] <function>")
+        if not (isinstance(B_sqrtArgs, tuple)):
+            raise self.PrecondStaticObsJTermError("B_sqrtArgs <tuple>")
+        self.B_sqrt=B_sqrt
+        self.B_sqrtAdj=B_sqrtAdj
+        self.B_sqrtArgs=B_sqrtArgs
+    
+        self.__xValidate(x_bkg)
+        self.x_bkg=x_bkg
+
+        self.isMinimized=False
+        
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __BSqrt(self, xi):
+        return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
+
+    #------------------------------------------------------
+
+    def __xValidate(self, xi):
+        if not isinstance(xi, np.ndarray):
+            raise self.PrecondStaticObsJTermError("xi <numpy.array>")
+        if not xi.dtype=='float64':
+            raise self.PrecondStaticObsJTermError("xi.dtype=='float64'")
+        if xi.ndim<>1:
+            raise self.PrecondStaticObsJTermError("xi.ndim==1")
+        if len(xi)<>self.modelGrid.N:
+            raise self.PrecondStaticObsJTermError(
+                "len(xi)==self.grid.N")
+
+    #------------------------------------------------------
+    #----| Public methods |--------------------------------
+    #------------------------------------------------------
+
+    def J(self, xi, normalize=False): 
+        self.__xValidate(xi)
+        x=self.__BSqrt(xi)
+        return super(PrecondStaticObsJTerm, self).J(x)+0.5*np.dot(xi,xi)
+
+    #------------------------------------------------------
+
+    def gradJ(self, xi, normalize=False):
+        self.__xValidate(xi)
+        x=self.__BSqrt(xi)
+
+        dx0=super(PrecondStaticObsJTerm, self).gradJ(x)
+        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+
+    #------------------------------------------------------
+
+    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
+
+        if self.retall:
+            allvecs=[]
+            allvecs_precond=minimizeReturn[7]
+            for vec in allvecs_precond:
+                allvecs.append(self.__BSqrt(vec))
+            if convergence:
+                convJVal=self.jAllvecs(allvecs_precond)
+        else:
+            allvecs=None
+            convJVal=None
+
+        self.minimum=JMinimum(
+            self.__BSqrt(minimizeReturn[0]), minimizeReturn[1],
+            minimizeReturn[2], minimizeReturn[3], 
+            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
+            maxiter, allvecs=allvecs, convergence=convJVal)
+
+
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
 
 class PrecondTWObsJTerm(TWObsJTerm):
     """
     Preconditionned time window observations JTerm subclass
+    (classical 4D-Var context)
 
     PrecondTWObsJTerm(obs, nlModel, tlm
                         x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=())
@@ -47,9 +140,9 @@ class PrecondTWObsJTerm(TWObsJTerm):
         super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
-            raise PrecondTWObsJTermError("B_sqrt[Adj] <function>")
+            raise self.PrecondTWObsJTermError("B_sqrt[Adj] <function>")
         if not (isinstance(B_sqrtArgs, tuple)):
-            raise PrecondTWObsJTermError("B_sqrtArgs <tuple>")
+            raise self.PrecondTWObsJTermError("B_sqrtArgs <tuple>")
         self.B_sqrt=B_sqrt
         self.B_sqrtAdj=B_sqrtAdj
         self.B_sqrtArgs=B_sqrtArgs
@@ -84,13 +177,13 @@ class PrecondTWObsJTerm(TWObsJTerm):
 
     def J(self, xi): 
         self.__xValidate(xi)
-        x=self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
+        x=self.__BSqrt(xi)
         return super(PrecondTWObsJTerm, self).J(x)+0.5*np.dot(xi,xi)
     #------------------------------------------------------
 
     def gradJ(self, xi):
         self.__xValidate(xi)
-        x=self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
+        x=self.__BSqrt(xi)
 
         dx0=super(PrecondTWObsJTerm, self).gradJ(x)
         return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
