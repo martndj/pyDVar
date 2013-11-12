@@ -3,6 +3,88 @@ from observations import StaticObs, TimeWindowObs
 from pseudoSpec1D import PeriodicGrid, Launcher, TLMLauncher
 import numpy as np
 
+class BkgJTerm(JTerm):
+    """
+    Background model state JTerm subclass
+
+        BkgJTerm(bkg, grid, metric=None)
+
+            bkg     :   background model state <numpy.ndarray>
+            grid    :   <PeriodicGrid>
+            metric  :   information metric (B^{-1})
+                            <float | numpy.ndarray >
+    """
+    class BkgJTermError(JTerm):
+        pass
+
+
+    #------------------------------------------------------
+    #----| Init |------------------------------------------
+    #------------------------------------------------------
+
+    def __init__(self, bkg, g, metric=1.): 
+
+        if not isinstance(g, PeriodicGrid):
+            raise self.BkgJTermError("g <pseudoSpec1D.PeriodicGrid>")
+        self.grid=g
+
+        if not isinstance(bkg, np.ndarray):
+            raise self.BkgJTermError("bkg <numpy.ndarray>")
+        if not (bkg.ndim==1 and len(bkg)==g.N):
+            raise self.BkgJTermError("bkg.shape==(g.N,)")
+        self.bkg=bkg
+        self.N=self.grid.N
+
+        if isinstance(metric, (float, int)):
+            self.metric=metric*np.eye(self.N)
+        elif isinstance(metric, np.ndarray):
+            if metric.ndim==1:
+                self.metric=np.diag(metric)
+            elif metric.ndim==2:
+                self.metric=metric
+            else:
+                raise self.BkgJTermError("metric.ndim=[1|2]")
+        else:   
+            raise self.BkgJTermError("metric <None | numpy.ndarray>")
+
+
+        self.args=()
+        self.isMinimized=False
+        
+    #------------------------------------------------------
+    #----| Private methods |-------------------------------
+    #------------------------------------------------------
+
+    def __xValidate(self, x):
+        if not isinstance(x, np.ndarray):
+            raise self.BkgJTermError("x <numpy.array>")
+        if not x.dtype=='float64':
+            raise self.BkgJTermError("x.dtype=='float64'")
+        if x.ndim<>1:
+            raise self.BkgJTermError("x.ndim==1")
+        if len(x)<>self.grid.N:
+            raise self.BkgJTermError("len(x)==self.nlModel.grid.N")
+
+    #------------------------------------------------------
+    #----| Public methods |--------------------------------
+    #------------------------------------------------------
+
+    def J(self, x): 
+        self.__xValidate(x)
+        inno=(x-self.bkg)
+        return 0.5*np.dot(inno, np.dot(self.metric, inno)) 
+
+    #------------------------------------------------------
+
+    def gradJ(self, x):
+        self.__xValidate(x)
+        inno=(x-self.bkg)
+        return -np.dot(self.metric, inno)
+
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
+
 class StaticObsJTerm(JTerm):
     """
     Static observations JTerm subclass
@@ -23,12 +105,12 @@ class StaticObsJTerm(JTerm):
     def __init__(self, obs, g): 
 
         if not isinstance(obs, StaticObs):
-            raise StaticObsJTermError("obs <SaticObs>")
+            raise self.StaticObsJTermError("obs <SaticObs>")
         self.obs=obs
         self.nObs=self.obs.nObs
 
         if not isinstance(g, PeriodicGrid):
-            raise StaticObsJTermError("g <pseudoSpec1D.PeriodicGrid>")
+            raise self.StaticObsJTermError("g <pseudoSpec1D.PeriodicGrid>")
         self.modelGrid=g
 
         self.obsOpTLMAdj=self.obs.obsOpTLMAdj
@@ -43,13 +125,13 @@ class StaticObsJTerm(JTerm):
 
     def __xValidate(self, x):
         if not isinstance(x, np.ndarray):
-            raise self.TWObsJTermError("x <numpy.array>")
+            raise self.StaticObsJTermError("x <numpy.array>")
         if not x.dtype=='float64':
-            raise self.TWObsJTermError("x.dtype=='float64'")
+            raise self.StaticObsJTermError("x.dtype=='float64'")
         if x.ndim<>1:
-            raise self.TWObsJTermError("x.ndim==1")
+            raise self.StaticObsJTermError("x.ndim==1")
         if len(x)<>self.modelGrid.N:
-            raise self.TWObsJTermError("len(x)==self.nlModel.grid.N")
+            raise self.StaticObsJTermError("len(x)==self.nlModel.grid.N")
 
     #------------------------------------------------------
     #----| Public methods |--------------------------------
