@@ -51,11 +51,11 @@ class PrecondJTerm(JTerm):
         return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
 
     #------------------------------------------------------
-    def minimize(self, x_fGuess, maxiter=50, retall=True,
+    def minimize(self, maxiter=50, retall=True,
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
         super(PrecondJTerm, self).minimize(
-                    x_fGuess, maxiter=50, retall=True,
+                    self.x_bkg, maxiter=50, retall=True,
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14)
         self.analysis=self.BSqrt(self.minimum.xOpt)
