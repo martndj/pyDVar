@@ -186,11 +186,22 @@ class TWObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm): 
+    def __init__(self, obs, nlModel, tlm, t0=0., tFinal=None): 
 
         if not isinstance(obs, TimeWindowObs):
             raise self.TWObsJTermError("obs <TimeWindowObs>")
-        self.obs=obs
+
+
+        self.tWin=np.zeros(2)
+        self.tWin[0]=t0
+        if tFinal==None : 
+            self.tWin[1]=obs.tMax
+        else:
+            self.tWin[1]=tFinal
+
+
+
+        self.obs=self.__obsCycleExtract(obs)
         self.nTimes=self.obs.nTimes
         self.nObs=self.obs.nObs
 
@@ -212,6 +223,19 @@ class TWObsJTerm(JTerm):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
+    def __obsCycleExtract(self, obs):
+        obsTimes=obs.d_Obs.keys()
+        obsTimes.sort()
+
+        d_ObsExt={}
+        for t in obsTimes:
+            if t>self.tWin[0] and t <=self.tWin[1] : 
+                d_ObsExt[t]=obs.d_Obs[t]
+    
+        return TimeWindowObs(d_ObsExt)
+    
+    #------------------------------------------------------
+
     def __xValidate(self, x):
         if not isinstance(x, np.ndarray):
             raise self.TWObsJTermError("x <numpy.array>")
@@ -228,7 +252,7 @@ class TWObsJTerm(JTerm):
 
     def J(self, x, normalize=False): 
         self.__xValidate(x)
-        d_inno=self.obs.innovation(x, self.nlModel)
+        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         Jo=0.
         for t in self.obs.times:
             Jo+=0.5*np.dot(d_inno[t],np.dot(self.obs[t].metric,d_inno[t]))
@@ -241,7 +265,7 @@ class TWObsJTerm(JTerm):
 
     def gradJ(self, x, normalize=False):
         self.__xValidate(x)
-        d_inno=self.obs.innovation(x, self.nlModel)
+        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
         for t in d_inno.keys():
             d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
@@ -257,7 +281,7 @@ class TWObsJTerm(JTerm):
             if i<self.nTimes:
                 t_pre=self.obs.times[-1-i]
             else:
-                t_pre=0.
+                t_pre=self.tWin[0]
 
             if self.obs[t].obsOpTLMAdj==None:
                 w=d_NormInno[t]
@@ -274,7 +298,6 @@ class TWObsJTerm(JTerm):
             return -(1./self.nObs)*MAdjObs
         else:
             return -MAdjObs
-
 
 
 #=====================================================================

@@ -310,15 +310,18 @@ class TimeWindowObs(object):
                         "d_Obs <dict {time <float>: <StaticObs>}>")
             if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
                 raise self.TimeWindowObsError("all obsOp must be the same")
-        self.nTimes=len(d_Obs.keys())
-        self.times=np.sort(d_Obs.keys())
-        self.tMax=self.times.max()
+
+        self.times=d_Obs.keys()
+        self.times.sort()
+
+        self.nTimes=len(self.times)
+        self.tMax=np.max(self.times)
         self.d_Obs=d_Obs
         self.nObs=0
-        for t in d_Obs.keys():
+        for t in self.times:
             self.nObs+=self.d_Obs[t].nObs
-        self.obsOp=d_Obs[d_Obs.keys()[0]].obsOp
-        self.obsOpArgs=d_Obs[d_Obs.keys()[0]].obsOpArgs
+        self.obsOp=d_Obs[self.times[0]].obsOp
+        self.obsOpArgs=d_Obs[self.times[0]].obsOpArgs
 
                 
     #------------------------------------------------------
@@ -331,13 +334,12 @@ class TimeWindowObs(object):
 
     #------------------------------------------------------
 
-    def __integrate(self, x, propagator):
+    def __integrate(self, x, propagator, t0=0.):
         self.__propagatorValidate(propagator)
         d_xt={}
-        t0=0.
         x0=x
         for t in self.times:
-            if t==0.:
+            if t==t0:
                 d_xt[t]=x0
             else:
                 d_xt[t]=(propagator.integrate(x0,t-t0)).final    
@@ -349,21 +351,21 @@ class TimeWindowObs(object):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def modelEquivalent(self, x, propagator):
+    def modelEquivalent(self, x, propagator, t0=0.):
         self.__propagatorValidate(propagator)
         g=propagator.grid
         d_Hx={}
-        d_xt=self.__integrate(x, propagator)
+        d_xt=self.__integrate(x, propagator, t0=t0)
         for t in self.times:
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
         return d_Hx
 
     #------------------------------------------------------
     
-    def innovation(self, x, propagator):
+    def innovation(self, x, propagator, t0=0.):
         self.__propagatorValidate(propagator)
         d_inno={}
-        d_Hx=self.modelEquivalent(x, propagator)
+        d_Hx=self.modelEquivalent(x, propagator, t0=t0)
         for t in self.times:
             d_inno[t]=self.d_Obs[t].values-d_Hx[t]
         return d_inno
@@ -383,7 +385,7 @@ class TimeWindowObs(object):
     def plot(self, g, nbGraphLine=3, trajectory=None, style='go', 
                 trajectoryStyle='k'):
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
-            raise TimeWindowObsError("trajectory <None | Trajectory>")
+            raise self.TimeWindowObsError("trajectory <None | Trajectory>")
         if self.nTimes < nbGraphLine:
             nSubRow=self.nTimes
         else:
@@ -434,6 +436,8 @@ def loadTWObs(fun):
 
     TWObs=TimeWindowObs(d_Obs) 
     return TWObs
+
+
 
 #=====================================================================
 #---------------------------------------------------------------------

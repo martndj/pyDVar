@@ -154,9 +154,11 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
     #------------------------------------------------------
 
     def __init__(self, obs, nlModel, tlm, 
-                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()):
+                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=(),
+                    t0=0., tFinal=None):
 
-        super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm)  
+        super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm, 
+                                                t0=t0, tFinal=tFinal)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
             raise self.PrecondTWObsJTermError("B_sqrt[Adj] <function>")
