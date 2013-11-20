@@ -1,4 +1,4 @@
-from jTerm import JTerm
+from jTerm import JTerm, norm
 from observations import StaticObs, TimeWindowObs
 from pseudoSpec1D import PeriodicGrid, Launcher, TLMLauncher
 import numpy as np
@@ -76,10 +76,19 @@ class BkgJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
+    def gradJ(self, x, maxNorm=None):
         self.__xValidate(x)
         inno=(x-self.bkg)
-        return -np.dot(self.metric, inno)
+        grad=-np.dot(self.metric, inno)
+        if maxNorm==None:
+            return grad
+        elif isinstance(maxNorm, float):
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.BkgJTermError("maxNorm <float>")
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -148,7 +157,7 @@ class StaticObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=False):
+    def gradJ(self, x, normalize=False, maxNorm=None):
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
@@ -160,9 +169,19 @@ class StaticObsJTerm(JTerm):
                                             *self.obsOpTLMAdjArgs)
 
         if normalize:
-            return (1./self.nObs)*grad
+            grad= (1./self.nObs)*grad
         else:
-            return grad 
+            pass 
+        if maxNorm==None:
+            return grad
+        elif isinstance(maxNorm, float):
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.StaticObsJTermError("maxNorm <float>")
+
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -239,7 +258,7 @@ class TWObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=False):
+    def gradJ(self, x, normalize=False, maxNorm=None):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         d_NormInno={}
@@ -270,10 +289,21 @@ class TWObsJTerm(JTerm):
             MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
             w=MAdjObs
         
+        grad=-MAdjObs
         if normalize:
-            return -(1./self.nObs)*MAdjObs
+            grad= (1./self.nObs)*grad
         else:
-            return -MAdjObs
+            pass
+        
+        if maxNorm==None:
+            return grad
+        elif isinstance(maxNorm, float):
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.TWObsJTermError("maxNorm <float>")
 
 
 

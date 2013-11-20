@@ -5,6 +5,10 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 import pickle
 
+def norm(x):
+    return np.sqrt(np.dot(x,x))
+
+
 class JMinimum(object):
     """
     Minimisation result of a JTerm
@@ -113,8 +117,18 @@ class JTerm(object):
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
-        return self.__gradCostFunc(x, *self.args)
+    def gradJ(self, x, maxNorm=None):
+        if maxNorm==None:
+            return self.__gradCostFunc(x, *self.args)
+        elif isinstance(maxNorm, float):
+            grad=self.__gradCostFunc(x, *self.args)
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.JTermError("maxNorm <float>")
+
 
     #------------------------------------------------------
 

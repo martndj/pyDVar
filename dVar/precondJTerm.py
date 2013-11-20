@@ -43,12 +43,22 @@ class PrecondJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, xi, normalize=False):
+    def gradJ(self, xi, normalize=False, maxNorm=None):
         self._xValidate(xi)
         x=self.BSqrt(xi)
 
         dx0=super(PrecondJTerm, self).gradJ(x)
-        return self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+        grad= self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+        if maxNorm==None:
+            return grad
+        elif isinstance(maxNorm, float):
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.PreconfJTermError("maxNorm <float>")
+
 
     #------------------------------------------------------
     def minimize(self, maxiter=50, retall=True,
@@ -59,25 +69,6 @@ class PrecondJTerm(JTerm):
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14)
         self.analysis=self.BSqrt(self.minimum.xOpt)
-#    def createMinimum(self, minimizeReturn, maxiter, convergence=True):
-#
-#        if self.retall:
-#            allvecs=[]
-#            allvecs_precond=minimizeReturn[7]
-#            for vec in allvecs_precond:
-#                allvecs.append(self.BSqrt(vec))
-#            if convergence:
-#                convJVal=self.jAllvecs(allvecs_precond)
-#        else:
-#            allvecs=None
-#            convJVal=None
-#
-#        self.minimum=JMinimum(
-#            self.BSqrt(minimizeReturn[0]), minimizeReturn[1],
-#            minimizeReturn[2], minimizeReturn[3], 
-#            minimizeReturn[4], minimizeReturn[5], minimizeReturn[6], 
-#            maxiter, allvecs=allvecs, convergence=convJVal)
-
 
         
 class PrecondStaticObsJTerm(PrecondJTerm, StaticObsJTerm):
