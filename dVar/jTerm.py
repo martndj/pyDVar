@@ -138,6 +138,8 @@ class JTerm(object):
         else:
             raise self.JTermError("maxNorm <float>")
 
+    def normGradJ(self, x):
+        return norm(self.gradJ(x))
 
     #------------------------------------------------------
 
