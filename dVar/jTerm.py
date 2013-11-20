@@ -5,6 +5,10 @@ from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 import pickle
 
+def norm(x):
+    return np.sqrt(np.dot(x,x))
+
+
 class JMinimum(object):
     """
     Minimisation result of a JTerm
@@ -89,7 +93,8 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, costFunc, gradCostFunc, args=()):
+    def __init__(self, costFunc, gradCostFunc, 
+                    args=None, maxGradNorm=None):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
@@ -97,9 +102,17 @@ class JTerm(object):
         self.__costFunc=costFunc
         self.__gradCostFunc=gradCostFunc
 
-        if not isinstance(args,tuple):
-            raise self.JTermError("args <tuple>")
-        self.args=args
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.JTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
+        if args==None:
+            self.args=(self.maxGradNorm)
+        elif isinstance(args, list):
+            args.append(self.maxGradNorm)
+            self.args=tuple(args)
+        else:
+            raise self.JTermError("args <None|list>")
+            
 
         self.isMinimized=False
         self.retall=False
@@ -108,13 +121,23 @@ class JTerm(object):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x):
+    def J(self, x, maxNorm=None):
         return self.__costFunc(x,*self.args) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
-        return self.__gradCostFunc(x, *self.args)
+    def gradJ(self, x, maxNorm=None):
+        if maxNorm==None:
+            return self.__gradCostFunc(x, *self.args)
+        elif isinstance(maxNorm, float):
+            grad=self.__gradCostFunc(x, *self.args)
+            normGrad=norm(grad)
+            if normGrad>maxNorm:
+                grad=(grad/normGrad)*(maxNorm)
+            return grad
+        else:
+            raise self.JTermError("maxNorm <float>")
+
 
     #------------------------------------------------------
 
@@ -247,7 +270,11 @@ class JTerm(object):
         def gradCFSum(x):
             return self.gradJ(x)+J2.gradJ(x)
 
-        JSum=JTerm(CFSum, gradCFSum)
+        maxGradNorm=np.min((self.maxGradNorm, J2.maxGradNorm))
+        if maxGradNorm==None:
+            maxGradNorm=np.max((self.maxGradNorm, J2.maxGradNorm))
+
+        JSum=JTerm(CFSum, gradCFSum, maxGradNorm=maxGraNorm)
         return JSum
 
     #------------------------------------------------------
