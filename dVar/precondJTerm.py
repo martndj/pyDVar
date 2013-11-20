@@ -1,5 +1,5 @@
 from observations import StaticObs, TimeWindowObs
-from jTerm import JTerm, JMinimum
+from jTerm import JTerm, JMinimum, norm
 from obsJTerm import TWObsJTerm, StaticObsJTerm
 import numpy as np
 
@@ -36,14 +36,14 @@ class PrecondJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def J(self, xi, normalize=False): 
+    def J(self, xi, maxNorm=None, normalize=False): 
         self._xValidate(xi)
         x=self.BSqrt(xi)
         return super(PrecondJTerm, self).J(x)+0.5*np.dot(xi,xi)
 
     #------------------------------------------------------
 
-    def gradJ(self, xi, normalize=False, maxNorm=None):
+    def gradJ(self, xi, maxNorm=None, normalize=False):
         self._xValidate(xi)
         x=self.BSqrt(xi)
 
@@ -82,9 +82,11 @@ class PrecondStaticObsJTerm(PrecondJTerm, StaticObsJTerm):
     #------------------------------------------------------
 
     def __init__(self, obs, g,
-                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()): 
+                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=(),
+                    maxGradNorm=None): 
         
-        super(PrecondStaticObsJTerm, self).__init__(obs, g)  
+        super(PrecondStaticObsJTerm, self).__init__(obs, g, 
+                                                maxGradNorm=maxGradNorm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
             raise self.PrecondStaticObsJTermError("B_sqrt[Adj] <function>")
@@ -145,9 +147,11 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
     #------------------------------------------------------
 
     def __init__(self, obs, nlModel, tlm, 
-                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=()):
+                    x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=(),
+                    maxGradNorm=None):
 
-        super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm)  
+        super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm,
+                                            maxGradNorm=maxGradNorm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
             raise self.PrecondTWObsJTermError("B_sqrt[Adj] <function>")

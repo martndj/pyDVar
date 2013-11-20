@@ -22,7 +22,7 @@ class BkgJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, bkg, g, metric=1.): 
+    def __init__(self, bkg, g, metric=1., maxGradNorm=None): 
 
         if not isinstance(g, PeriodicGrid):
             raise self.BkgJTermError("g <pseudoSpec1D.PeriodicGrid>")
@@ -48,7 +48,11 @@ class BkgJTerm(JTerm):
             raise self.BkgJTermError("metric <None | numpy.ndarray>")
 
 
-        self.args=()
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.BkgJTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
+        self.args=(self.maxGradNorm, )
+
         self.isMinimized=False
         
     #------------------------------------------------------
@@ -69,7 +73,7 @@ class BkgJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x): 
+    def J(self, x, maxNorm=None): 
         self.__xValidate(x)
         inno=(x-self.bkg)
         return 0.5*np.dot(inno, np.dot(self.metric, inno)) 
@@ -111,7 +115,7 @@ class StaticObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, g): 
+    def __init__(self, obs, g, maxGradNorm=None): 
 
         if not isinstance(obs, StaticObs):
             raise self.StaticObsJTermError("obs <SaticObs>")
@@ -125,7 +129,11 @@ class StaticObsJTerm(JTerm):
         self.obsOpTLMAdj=self.obs.obsOpTLMAdj
         self.obsOpTLMAdjArgs=self.obs.obsOpArgs
 
-        self.args=()
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.StaticObsJTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
+        self.args=(self.maxGradNorm, )
+
         self.isMinimized=False
         
     #------------------------------------------------------
@@ -146,7 +154,7 @@ class StaticObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, normalize=False): 
+    def J(self, x, maxNorm=None, normalize=False): 
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if normalize:
@@ -157,7 +165,7 @@ class StaticObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=False, maxNorm=None):
+    def gradJ(self, x, maxNorm=None, normalize=False):
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
@@ -205,7 +213,7 @@ class TWObsJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, obs, nlModel, tlm): 
+    def __init__(self, obs, nlModel, tlm, maxGradNorm=None): 
 
         if not isinstance(obs, TimeWindowObs):
             raise self.TWObsJTermError("obs <TimeWindowObs>")
@@ -223,8 +231,11 @@ class TWObsJTerm(JTerm):
         self.tlm=tlm
         self.modelGrid=nlModel.grid
 
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.TWObsJTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
+        self.args=(self.maxGradNorm, )
 
-        self.args=()
         self.isMinimized=False
         
     #------------------------------------------------------
@@ -245,7 +256,7 @@ class TWObsJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, normalize=False): 
+    def J(self, x, maxNorm=None, normalize=False): 
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         Jo=0.
@@ -258,7 +269,7 @@ class TWObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, normalize=False, maxNorm=None):
+    def gradJ(self, x, maxNorm=None, normalize=False):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel)
         d_NormInno={}

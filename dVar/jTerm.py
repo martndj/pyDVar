@@ -93,7 +93,8 @@ class JTerm(object):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self, costFunc, gradCostFunc, args=()):
+    def __init__(self, costFunc, gradCostFunc, 
+                    args=None, maxGradNorm=None):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
@@ -101,9 +102,17 @@ class JTerm(object):
         self.__costFunc=costFunc
         self.__gradCostFunc=gradCostFunc
 
-        if not isinstance(args,tuple):
-            raise self.JTermError("args <tuple>")
-        self.args=args
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.JTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
+        if args==None:
+            self.args=(self.maxGradNorm)
+        elif isinstance(args, list):
+            args.append(self.maxGradNorm)
+            self.args=tuple(args)
+        else:
+            raise self.JTermError("args <None|list>")
+            
 
         self.isMinimized=False
         self.retall=False
@@ -112,7 +121,7 @@ class JTerm(object):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x):
+    def J(self, x, maxNorm=None):
         return self.__costFunc(x,*self.args) 
 
     #------------------------------------------------------
@@ -261,7 +270,11 @@ class JTerm(object):
         def gradCFSum(x):
             return self.gradJ(x)+J2.gradJ(x)
 
-        JSum=JTerm(CFSum, gradCFSum)
+        maxGradNorm=np.min((self.maxGradNorm, J2.maxGradNorm))
+        if maxGradNorm==None:
+            maxGradNorm=np.max((self.maxGradNorm, J2.maxGradNorm))
+
+        JSum=JTerm(CFSum, gradCFSum, maxGradNorm=maxGraNorm)
         return JSum
 
     #------------------------------------------------------
