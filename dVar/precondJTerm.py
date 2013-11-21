@@ -49,6 +49,21 @@ class PrecondJTerm(JTerm):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
     
+
+    def gradJ(self, xi):
+        if self.maxGradNorm==None:
+            return self._gradCostFunc(xi, *self.args)
+        elif isinstance(self.maxGradNorm, float):
+            grad=self._gradCostFunc(xi, *self.args)
+            # norm compared in physical space
+            # BSqrt being linear
+            normGrad=norm(self.BSqrt(grad))
+            if normGrad>self.maxGradNorm:
+                grad=(grad/normGrad)*(self.maxGradNorm)
+            return grad
+    
+    #------------------------------------------------------
+    
     def BSqrt(self, xi):
         return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
 
