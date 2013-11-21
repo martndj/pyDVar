@@ -73,9 +73,10 @@ class PrecondJTerm(JTerm):
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
         super(PrecondJTerm, self).minimize(
-                    self.x_bkg, maxiter=50, retall=True,
-                    testGrad=True, convergence=True, 
-                    testGradMinPow=-1, testGradMaxPow=-14)
+                    self.x_bkg, maxiter=maxiter, retall=retall,
+                    testGrad=testGrad, convergence=convergence, 
+                    testGradMinPow=testGradMinPow,
+                    testGradMaxPow=testGradMaxPow)
         self.analysis=self.BSqrt(self.minimum.xOpt)
 
         
