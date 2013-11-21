@@ -29,48 +29,61 @@ class PrecondJTerm(JTerm):
                 "len(xi)==self.grid.N")
 
     #------------------------------------------------------
+
+    def _costFunc(self, xi, normalize=False): 
+        self._xValidate(xi)
+        x=self.BSqrt(xi)
+        return super(PrecondJTerm, self)._costFunc(x)+0.5*np.dot(xi,xi)
+
+    #------------------------------------------------------
+
+    def _gradCostFunc(self, xi, normalize=False):
+        self._xValidate(xi)
+        x=self.BSqrt(xi)
+
+        dx0=super(PrecondJTerm, self)._gradCostFunc(x)
+        grad= self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+        return grad
+    
+    #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
+    
+
+    def gradJ(self, xi):
+        if self.maxGradNorm==None:
+            return self._gradCostFunc(xi, *self.args)
+        elif isinstance(self.maxGradNorm, float):
+            grad=self._gradCostFunc(xi, *self.args)
+            # norm compared in physical space
+            # BSqrt being linear
+            normGrad=norm(self.BSqrt(grad))
+            if normGrad>self.maxGradNorm:
+                grad=(grad/normGrad)*(self.maxGradNorm)
+            return grad
+    
+    #------------------------------------------------------
+    
     def BSqrt(self, xi):
         return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
 
     #------------------------------------------------------
-
-    def J(self, xi, maxNorm=None, normalize=False): 
-        self._xValidate(xi)
-        x=self.BSqrt(xi)
-        return super(PrecondJTerm, self).J(x)+0.5*np.dot(xi,xi)
-
-    #------------------------------------------------------
-
-    def gradJ(self, xi, maxNorm=None, normalize=False):
-        self._xValidate(xi)
-        x=self.BSqrt(xi)
-
-        dx0=super(PrecondJTerm, self).gradJ(x)
-        grad= self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
-        if maxNorm==None:
-            return grad
-        elif isinstance(maxNorm, float):
-            normGrad=norm(grad)
-            if normGrad>maxNorm:
-                grad=(grad/normGrad)*(maxNorm)
-            return grad
-        else:
-            raise self.PreconfJTermError("maxNorm <float>")
-
-
-    #------------------------------------------------------
+    
     def minimize(self, maxiter=50, retall=True,
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
         super(PrecondJTerm, self).minimize(
-                    self.x_bkg, maxiter=50, retall=True,
-                    testGrad=True, convergence=True, 
-                    testGradMinPow=-1, testGradMaxPow=-14)
+                    self.x_bkg, maxiter=maxiter, retall=retall,
+                    testGrad=testGrad, convergence=convergence, 
+                    testGradMinPow=testGradMinPow,
+                    testGradMaxPow=testGradMaxPow)
         self.analysis=self.BSqrt(self.minimum.xOpt)
 
         
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
+
 class PrecondStaticObsJTerm(PrecondJTerm, StaticObsJTerm):
     '''
     Preconditionned static observation JTerm subclass
@@ -188,6 +201,7 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
             output+="\n Not minimized"
         output+="\n///////////////////////////////////////////////////////////\n"
         return output
+
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================

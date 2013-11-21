@@ -94,25 +94,18 @@ class JTerm(object):
     #------------------------------------------------------
 
     def __init__(self, costFunc, gradCostFunc, 
-                    args=None, maxGradNorm=None):
+                    args=(), maxGradNorm=None):
         
         if not (callable(costFunc) and callable(gradCostFunc)):
             raise self.JTermError("costFunc, gardCostFunc <function>")
 
-        self.__costFunc=costFunc
-        self.__gradCostFunc=gradCostFunc
+        self._costFunc=costFunc
+        self._gradCostFunc=gradCostFunc
 
         if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
             raise self.JTermError("maxGradNorm <None|float>")
         self.maxGradNorm=maxGradNorm 
-        if args==None:
-            self.args=(self.maxGradNorm)
-        elif isinstance(args, list):
-            args.append(self.maxGradNorm)
-            self.args=tuple(args)
-        else:
-            raise self.JTermError("args <None|list>")
-            
+        self.args=args
 
         self.isMinimized=False
         self.retall=False
@@ -121,22 +114,20 @@ class JTerm(object):
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x, maxNorm=None):
-        return self.__costFunc(x,*self.args) 
+    def J(self, x):
+        return self._costFunc(x,*self.args) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x, maxNorm=None):
-        if maxNorm==None:
-            return self.__gradCostFunc(x, *self.args)
-        elif isinstance(maxNorm, float):
-            grad=self.__gradCostFunc(x, *self.args)
+    def gradJ(self, x):
+        if self.maxGradNorm==None:
+            return self._gradCostFunc(x, *self.args)
+        elif isinstance(self.maxGradNorm, float):
+            grad=self._gradCostFunc(x, *self.args)
             normGrad=norm(grad)
-            if normGrad>maxNorm:
-                grad=(grad/normGrad)*(maxNorm)
+            if normGrad>self.maxGradNorm:
+                grad=(grad/normGrad)*(self.maxGradNorm)
             return grad
-        else:
-            raise self.JTermError("maxNorm <float>")
 
     def normGradJ(self, x):
         return norm(self.gradJ(x))
@@ -198,14 +189,14 @@ class JTerm(object):
     #-----------------------------------------------------
 
     def gradTest(self, x, output=True, powRange=[-1,-14]):
-        J0=self.J(x)
-        gradJ0=self.gradJ(x)
+        J0=self._costFunc(x)
+        gradJ0=self._gradCostFunc(x)
         n2GradJ0=np.dot(gradJ0, gradJ0)
 
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
-            Jeps=self.J(x-eps*gradJ0)
+            Jeps=self._costFunc(x-eps*gradJ0)
             
             res=((J0-Jeps)/(eps*n2GradJ0))
             test[power]=[Jeps, res]
@@ -272,11 +263,15 @@ class JTerm(object):
         def gradCFSum(x):
             return self.gradJ(x)+J2.gradJ(x)
 
-        maxGradNorm=np.min((self.maxGradNorm, J2.maxGradNorm))
-        if maxGradNorm==None:
-            maxGradNorm=np.max((self.maxGradNorm, J2.maxGradNorm))
+        if (self.maxGradNorm==None and J2.maxGradNorm==None):
+            maxGradNorm=None
+        elif self.maxGradNorm==None:
+            maxGradNorm=J2.maxGradNorm
+        elif J2.maxGradNorm==None:
+            maxGradNorm=self.maxGradNorm
 
-        JSum=JTerm(CFSum, gradCFSum, maxGradNorm=maxGraNorm)
+
+        JSum=JTerm(CFSum, gradCFSum, maxGradNorm=maxGradNorm)
         return JSum
 
     #------------------------------------------------------
@@ -320,8 +315,10 @@ class TrivialJTerm(JTerm):
     #----| Init |------------------------------------------
     #------------------------------------------------------
 
-    def __init__(self):
-
+    def __init__(self, maxGradNorm=None):
+        if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
+            raise self.TrivialJTermError("maxGradNorm <None|float>")
+        self.maxGradNorm=maxGradNorm 
         self.args=()
         self.isMinimized=False
 
@@ -331,20 +328,20 @@ class TrivialJTerm(JTerm):
 
     def __xValidate(self, x):
         if not isinstance(x, np.ndarray):
-            raise TWObsJTermError("x <numpy.array>")
+            raise self.TrivialJTermError("x <numpy.array>")
         if x.ndim<>1:
             raise TWObsJTermError("x.ndim==1")
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
 
-    def J(self, x):
+    def _costFunc(self, x):
         self.__xValidate(x)
         return 0.5*np.dot(x,x) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x):
+    def _gradCostFunc(self, x):
         self.__xValidate(x)
         return x
 

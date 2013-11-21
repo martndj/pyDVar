@@ -51,7 +51,7 @@ class BkgJTerm(JTerm):
         if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
             raise self.BkgJTermError("maxGradNorm <None|float>")
         self.maxGradNorm=maxGradNorm 
-        self.args=(self.maxGradNorm, )
+        self.args=()
 
         self.isMinimized=False
         
@@ -70,29 +70,18 @@ class BkgJTerm(JTerm):
             raise self.BkgJTermError("len(x)==self.nlModel.grid.N")
 
     #------------------------------------------------------
-    #----| Public methods |--------------------------------
-    #------------------------------------------------------
 
-    def J(self, x, maxNorm=None): 
+    def _costFunc(self, x): 
         self.__xValidate(x)
         inno=(x-self.bkg)
         return 0.5*np.dot(inno, np.dot(self.metric, inno)) 
 
     #------------------------------------------------------
 
-    def gradJ(self, x, maxNorm=None):
+    def _gradCostFunc(self, x):
         self.__xValidate(x)
         inno=(x-self.bkg)
-        grad=-np.dot(self.metric, inno)
-        if maxNorm==None:
-            return grad
-        elif isinstance(maxNorm, float):
-            normGrad=norm(grad)
-            if normGrad>maxNorm:
-                grad=(grad/normGrad)*(maxNorm)
-            return grad
-        else:
-            raise self.BkgJTermError("maxNorm <float>")
+        return -np.dot(self.metric, inno)
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -132,7 +121,7 @@ class StaticObsJTerm(JTerm):
         if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
             raise self.StaticObsJTermError("maxGradNorm <None|float>")
         self.maxGradNorm=maxGradNorm 
-        self.args=(self.maxGradNorm, )
+        self.args=()
 
         self.isMinimized=False
         
@@ -151,10 +140,8 @@ class StaticObsJTerm(JTerm):
             raise self.StaticObsJTermError("len(x)==self.nlModel.grid.N")
 
     #------------------------------------------------------
-    #----| Public methods |--------------------------------
-    #------------------------------------------------------
 
-    def J(self, x, maxNorm=None, normalize=False): 
+    def _costFunc(self, x, normalize=False): 
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if normalize:
@@ -165,7 +152,7 @@ class StaticObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, maxNorm=None, normalize=False):
+    def _gradCostFunc(self, x, normalize=False):
         self.__xValidate(x)
         inno=self.obs.innovation(x, self.modelGrid)
         if self.obsOpTLMAdj==None:
@@ -180,16 +167,7 @@ class StaticObsJTerm(JTerm):
             grad= (1./self.nObs)*grad
         else:
             pass 
-        if maxNorm==None:
-            return grad
-        elif isinstance(maxNorm, float):
-            normGrad=norm(grad)
-            if normGrad>maxNorm:
-                grad=(grad/normGrad)*(maxNorm)
-            return grad
-        else:
-            raise self.StaticObsJTermError("maxNorm <float>")
-
+        return grad
 
 #=====================================================================
 #---------------------------------------------------------------------
@@ -247,7 +225,7 @@ class TWObsJTerm(JTerm):
         if not (isinstance(maxGradNorm, float) or maxGradNorm==None):
             raise self.TWObsJTermError("maxGradNorm <None|float>")
         self.maxGradNorm=maxGradNorm 
-        self.args=(self.maxGradNorm, )
+        self.args=()
 
         self.isMinimized=False
         
@@ -279,10 +257,8 @@ class TWObsJTerm(JTerm):
             raise self.TWObsJTermError("len(x)==self.nlModel.grid.N")
             
     #------------------------------------------------------
-    #----| Public methods |--------------------------------
-    #------------------------------------------------------
 
-    def J(self, x, maxNorm=None, normalize=False): 
+    def _costFunc(self, x, normalize=False): 
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         Jo=0.
@@ -295,7 +271,7 @@ class TWObsJTerm(JTerm):
 
     #------------------------------------------------------
 
-    def gradJ(self, x, maxNorm=None, normalize=False):
+    def _gradCostFunc(self, x, normalize=False):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
@@ -332,15 +308,7 @@ class TWObsJTerm(JTerm):
         else:
             pass
         
-        if maxNorm==None:
-            return grad
-        elif isinstance(maxNorm, float):
-            normGrad=norm(grad)
-            if normGrad>maxNorm:
-                grad=(grad/normGrad)*(maxNorm)
-            return grad
-        else:
-            raise self.TWObsJTermError("maxNorm <float>")
+        return grad
 
 
 #=====================================================================
