@@ -241,12 +241,12 @@ class JTerm(object):
     def __str__(self):
         output="////| jTerm |//////////////////////////////////////////////"
         if self.isMinimized:
-            if self.warnFlag:
-                output+="\n <!> Warning %d <!>"%self.warnFlag
-            output+="\n function value=%f"%self.fOpt
-            output+="\n gradient norm=%f"%self.gOptNorm
-            output+="\n function calls=%d"%self.fCalls
-            output+="\n gradient calls=%d"%self.gCalls
+            if self.minimum.warnFlag:
+                output+="\n <!> Warning %d <!>"%self.minimum.warnFlag
+            output+="\n function value=%f"%self.minimum.fOpt
+            output+="\n gradient norm=%f"%self.minimum.gOptNorm
+            output+="\n function calls=%d"%self.minimum.fCalls
+            output+="\n gradient calls=%d"%self.minimum.gCalls
         else:
             output+="\n Not minimized"
         output+="\n///////////////////////////////////////////////////////////\n"

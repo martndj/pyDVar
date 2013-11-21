@@ -278,9 +278,9 @@ class TWObsJTerm(JTerm):
         for t in d_inno.keys():
             d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
         #----| building reference trajectory |--------
-        tInt=np.max(self.obs.times)
-        traj_x=self.nlModel.integrate(x, tInt)
-        self.tlm.initialize(traj_x)
+        tInt=np.max(self.obs.times)-self.tWin[0]
+        traj_x=self.nlModel.integrate(x, tInt, t0=self.tWin[0])
+        self.tlm.reference(traj_x)
         #----| Adjoint retropropagation |-------------
         i=0
         MAdjObs=np.zeros(self.nlModel.grid.N)

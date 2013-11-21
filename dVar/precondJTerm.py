@@ -73,7 +73,8 @@ class PrecondJTerm(JTerm):
                     testGrad=True, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
         super(PrecondJTerm, self).minimize(
-                    self.x_bkg, maxiter=maxiter, retall=retall,
+                    np.zeros(self.modelGrid.N), maxiter=maxiter,
+                    retall=retall,
                     testGrad=testGrad, convergence=convergence, 
                     testGradMinPow=testGradMinPow,
                     testGradMaxPow=testGradMaxPow)
@@ -191,12 +192,12 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
         output+="\n B_sqrtAdj:\n  %s"%self.B_sqrtAdj
 
         if self.isMinimized:
-            if self.warnFlag:
-                output+="\n <!> Warning %d <!>"%self.warnFlag
-            output+="\n function value=%f"%self.fOpt
-            output+="\n gradient norm=%f"%self.gOptNorm
-            output+="\n function calls=%d"%self.fCalls
-            output+="\n gradient calls=%d"%self.gCalls
+            if self.minimum.warnFlag:
+                output+="\n <!> Warning %d <!>"%self.minimum.warnFlag
+            output+="\n function value=%f"%self.minimum.fOpt
+            output+="\n gradient norm=%f"%self.minimum.gOptNorm
+            output+="\n function calls=%d"%self.minimum.fCalls
+            output+="\n gradient calls=%d"%self.minimum.gCalls
         else:
             output+="\n Not minimized"
         output+="\n///////////////////////////////////////////////////////////\n"
