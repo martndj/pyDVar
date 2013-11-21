@@ -187,14 +187,14 @@ class JTerm(object):
     #-----------------------------------------------------
 
     def gradTest(self, x, output=True, powRange=[-1,-14]):
-        J0=self.J(x)
-        gradJ0=self.gradJ(x)
+        J0=self._costFunc(x)
+        gradJ0=self._gradCostFunc(x)
         n2GradJ0=np.dot(gradJ0, gradJ0)
 
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
-            Jeps=self.J(x-eps*gradJ0)
+            Jeps=self._costFunc(x-eps*gradJ0)
             
             res=((J0-Jeps)/(eps*n2GradJ0))
             test[power]=[Jeps, res]
