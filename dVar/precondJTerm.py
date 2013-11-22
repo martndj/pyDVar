@@ -32,17 +32,24 @@ class PrecondJTerm(JTerm):
 
     def _costFunc(self, xi, normalize=False): 
         self._xValidate(xi)
-        x=self.BSqrt(xi)
+        x=self.xi2x(xi)
         return super(PrecondJTerm, self)._costFunc(x)+0.5*np.dot(xi,xi)
 
     #------------------------------------------------------
 
     def _gradCostFunc(self, xi, normalize=False):
-        self._xValidate(xi)
-        x=self.BSqrt(xi)
+        '''
+            J= 1/2 xi'xi + 1/2 d'R^{-1}d
+                d= y -HB^{1/2}xi
 
+            => grad_{xi}J= xi -B^{1/2}'H'R^{-1}d
+
+        '''
+        self._xValidate(xi)
+        x=self.xi2x(xi)
+        # dx0=-H'R^{-1}d
         dx0=super(PrecondJTerm, self)._gradCostFunc(x)
-        grad= self.B_sqrtAdj(dx0,*self.B_sqrtArgs)+xi
+        grad=xi+ self.B_sqrtAdj(dx0,*self.B_sqrtArgs)
         return grad
     
     #------------------------------------------------------
@@ -56,15 +63,15 @@ class PrecondJTerm(JTerm):
         elif isinstance(self.maxGradNorm, float):
             grad=self._gradCostFunc(xi, *self.args)
             # norm compared in physical space
-            # BSqrt being linear
-            normGrad=norm(self.BSqrt(grad))
+            # B^{1/2} being linear
+            normGrad=norm(self.xi2x(grad))
             if normGrad>self.maxGradNorm:
                 grad=(grad/normGrad)*(self.maxGradNorm)
             return grad
     
     #------------------------------------------------------
     
-    def BSqrt(self, xi):
+    def xi2x(self, xi):
         return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
 
     #------------------------------------------------------
@@ -78,7 +85,7 @@ class PrecondJTerm(JTerm):
                     testGrad=testGrad, convergence=convergence, 
                     testGradMinPow=testGradMinPow,
                     testGradMaxPow=testGradMaxPow)
-        self.analysis=self.BSqrt(self.minimum.xOpt)
+        self.analysis=self.xi2x(self.minimum.xOpt)
 
         
 #=====================================================================
