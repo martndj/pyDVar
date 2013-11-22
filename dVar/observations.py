@@ -220,15 +220,16 @@ class StaticObs(object):
     #-------------------------------------------------------
     
     def plot(self, g, continuousField=None, axe=None, style='go', 
-                continuousFieldStyle='k-'):
+                continuousFieldStyle='k-', label=None):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
         axe=self.__checkAxe(axe)
-        axe.plot(self.interpolate(g), self.values, style)
+        axe.plot(self.interpolate(g), self.values, style, label=label)
         if isinstance(continuousField, np.ndarray):
             if (continuousField.ndim==1 and 
                     len(continuousField)==g.N):
-                axe.plot(g.x, continuousField, continuousFieldStyle)
+                axe.plot(g.x, continuousField, continuousFieldStyle, 
+                    label=label)
             else:
                 raise self.StaticObsError(
                         "incompatible continuous field dimensions")
