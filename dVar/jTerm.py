@@ -348,27 +348,3 @@ class TrivialJTerm(JTerm):
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
-
-
-if __name__=='__main__':
-
-    J1=TrivialJTerm()
-    x=np.ones(10)
-    
-    print("====| Simple cost function |=======")
-    print("First Guess:")
-    print(x)
-    J1.minimize(x)
-    print("Analysis:")
-    print(J1.analysis)
-
-
-    J2=TrivialJTerm()
-    print("\n\n====| Two terms cost function |====")
-    print("First Guess:")
-    print(x)
-    JSum=J1+(J2*.5)
-    JSum.minimize(x)
-    print("Analysis:")
-    print(JSum.analysis)
-
