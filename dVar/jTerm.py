@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.gridspec import GridSpec
 import pickle
+#from fmin_bfgs import fmin_bfgs
 
 def norm(x):
     return np.sqrt(np.dot(x,x))
@@ -125,7 +126,9 @@ class JTerm(object):
         elif isinstance(self.maxGradNorm, float):
             grad=self._gradCostFunc(x, *self.args)
             normGrad=norm(grad)
-            if normGrad>self.maxGradNorm:
+            if np.isnan(normGrad):
+                grad=np.zeros(self.modelGrid.N)
+            elif normGrad>self.maxGradNorm:
                 grad=(grad/normGrad)*(self.maxGradNorm)
             return grad
 
@@ -141,6 +144,7 @@ class JTerm(object):
 
         self.retall=retall
         self.minimizer=sciOpt.fmin_bfgs
+        #self.minimizer=fmin_bfgs
 
         if x_fGuess.dtype<>'float64':
             raise self.JTermError("x_fGuess.dtype=='float64'")
@@ -156,8 +160,7 @@ class JTerm(object):
                                         full_output=True)
 
         self.createMinimum(minimizeReturn, maxiter, convergence=convergence)
-        self.analysis=self.minimum.xOpt
-        self.isMinimized=True
+        self.createAnalysis()
 
         #----| Final Gradient test |--------------
         if testGrad:
@@ -175,7 +178,7 @@ class JTerm(object):
         if self.retall:
             allvecs=minimizeReturn[7]
             if convergence:
-                convJVal=self.jAllvecs(allvecs)
+                convJVal=self._jAllVecs(allvecs)
         else:
             allvecs=None
             convJVal=None
@@ -185,9 +188,18 @@ class JTerm(object):
             minimizeReturn[3], minimizeReturn[4], minimizeReturn[5],
             minimizeReturn[6], maxiter,
             allvecs=allvecs, convergence=convJVal)
+        self.isMinimized=True
 
     #-----------------------------------------------------
 
+    def createAnalysis(self):
+        if np.any(np.isnan(self.minimum.gOpt)):
+            nIters=len(self.minimum.allvecs)
+            self.analysis=self.minimum.allvecs[nIters-2]
+        else:
+            self.analysis=self.minimum.allvecs[nIters-1]
+                
+    #------------------------------------------------------
     def gradTest(self, x, output=True, powRange=[-1,-14]):
         J0=self._costFunc(x)
         gradJ0=self._gradCostFunc(x)
@@ -227,8 +239,9 @@ class JTerm(object):
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
+    
 
-    def jAllvecs(self, allvecs):
+    def _jAllVecs(self, allvecs):
         convJVal=[]
         for i in xrange(len(allvecs)):
             convJVal.append(self.J(allvecs[i]))

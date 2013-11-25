@@ -74,6 +74,15 @@ class PrecondJTerm(JTerm):
     def xi2x(self, xi):
         return self.B_sqrt(xi, *self.B_sqrtArgs)+self.x_bkg
 
+    #-----------------------------------------------------
+
+    def createAnalysis(self):
+        if np.any(np.isnan(self.minimum.gOpt)):
+            nIters=len(self.minimum.allvecs)
+            self.analysis=self.xi2x(self.minimum.allvecs[nIters-2])
+        else:
+            self.analysis=self.xi2x(self.minimum.allvecs[nIters-1])
+
     #------------------------------------------------------
     
     def minimize(self, maxiter=50, retall=True,
@@ -85,7 +94,7 @@ class PrecondJTerm(JTerm):
                     testGrad=testGrad, convergence=convergence, 
                     testGradMinPow=testGradMinPow,
                     testGradMaxPow=testGradMaxPow)
-        self.analysis=self.xi2x(self.minimum.xOpt)
+        
 
         
 #=====================================================================
