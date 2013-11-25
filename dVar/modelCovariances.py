@@ -6,6 +6,10 @@ def gauss(x, x0, sig):
     return np.exp(-((x-x0)**2)/(2*sig**2))
 
 
+#-------------------------------------------------
+#----| Isotropic and homogeneous covariances |----
+#-------------------------------------------------
+
 def fCorr_isoHomo(g, sig, x0=0.):
     return gauss(g.x, x0, sig)
 
@@ -80,6 +84,23 @@ def B_isoHomo_op(x, var, rCTilde_sqrt):
     return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt),
                         var, rCTilde_sqrt)
 
+#-------------------------------------------------
+#----| Structure function covariances |-----------
+#-------------------------------------------------
+
+def B_sqrt_str_op(xi, sig, strVec):
+    return sig*strVec*xi
+
+def B_sqrt_str_op_Adj(x, sig, strVec):
+    return sig*strVec*x
+
+def B_str_op(x, sig, strVec):
+    return B_sqrt_str_op(B_sqrt_str_op_Adj(x, sig, strVec),
+                        sig, strVec)
+
+#=====================================================================
+#---------------------------------------------------------------------
+#=====================================================================
 
 if __name__=='__main__':
     import random as rnd
@@ -87,11 +108,15 @@ if __name__=='__main__':
     from pseudoSpec1D import PeriodicGrid
     rnd.seed(0.4573216806)
     
+
+    covType='str'
+    #covType='isoHomo'
+
     N=11
     mu=1.
     sigRnd=1.
     
-    
+
     
     x=np.empty(N, dtype='complex')
     y=np.empty(N)
@@ -118,10 +143,29 @@ if __name__=='__main__':
     
     
     sig=5.
-    lCorr=5.
-    variances=sig*np.ones(g.N)
-    fCorr=fCorr_isoHomo(g, lCorr)
-    CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
+
+    if covType=='isoHomo':
+        lCorr=5.
+        variances=sig*np.ones(g.N)
+        fCorr=fCorr_isoHomo(g, lCorr)
+        CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
+
+        B_sqrt_op=B_sqrt_isoHomo_op
+        B_sqrt_op_Adj=B_sqrt_isoHomo_op_Adj
+        B_op=B_isoHomo_op
+        B_args=(variances, CTilde_sqrt)
+
+
+    elif covType=='str':
+
+        def strFunc(x, Lb):
+            return 0.5*(np.exp(-0.5*(x/Lb)**2)
+                       *np.cos(4.*(x/Lb)))
+ 
+        B_sqrt_op=B_sqrt_str_op
+        B_sqrt_op_Adj=B_sqrt_str_op_Adj
+        B_op=B_str_op
+        B_args=(sig, strFunc(g.x, 3.))
     
     
     # adjoint test
@@ -133,8 +177,8 @@ if __name__=='__main__':
         yNoise[i]=rnd.gauss(mu, sigNoise)
         xNoise[i]=rnd.gauss(mu, sigNoise)
     testDirect=np.dot(xNoise,
-                        B_sqrt_isoHomo_op(yNoise, variances, CTilde_sqrt).conj())
-    testAdjoint=np.dot(B_sqrt_isoHomo_op_Adj(xNoise, variances, CTilde_sqrt),
+                        B_sqrt_op(yNoise, *B_args).conj())
+    testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, *B_args),
                         yNoise.conj())
     
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
@@ -145,16 +189,16 @@ if __name__=='__main__':
     NDirac=Ng/4
     xDirac[NDirac]=1.
     x0Dirac=g.x[NDirac]
-    xTest=B_isoHomo_op(xDirac, variances, CTilde_sqrt)
+    xTest=B_op(xDirac, *B_args)
         
 
     plt.figure()
-    plt.subplot(211)
-    plt.plot(g.x, xTest, 'b')
-    plt.plot(g.x, sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'g')
-    plt.legend([r'$ B(\delta(x-x_0))$', r'$\sigma^2f_{corr}(x-x_0)$'],
-                loc='best')
+    plt.plot(g.x, xTest, 'b', label=r'$ B(\delta(x-x_0))$')
+    if covType=='isoHomo':
+        plt.plot(g.x, sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'g', 
+                label=r'$\sigma^2f_{corr}(x-x_0)$')
+    elif covType=='str':
+        pass
+    plt.legend(loc='best')
     plt.title(r'$\sigma=%.1f$'%sig)
-    plt.subplot(212)
-    plt.plot(g.x, xTest-sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'r')
     plt.show()
