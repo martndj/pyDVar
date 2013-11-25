@@ -49,7 +49,7 @@ def ifft_Adj(x):
     xi=xi/N
     return xi
 
-def B_sqrt_op(xi, var, rCTilde_sqrt, aliasing=3):
+def B_sqrt_isoHomo_op(xi, var, rCTilde_sqrt, aliasing=3):
     """
         B_{1/2} operator
 
@@ -67,7 +67,7 @@ def B_sqrt_op(xi, var, rCTilde_sqrt, aliasing=3):
     return specFilt(x2, Ntrc)   #   5
 
 
-def B_sqrt_op_Adj(x, var, rCTilde_sqrt, aliasing=3):
+def B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt, aliasing=3):
     Ntrc=(len(x)-1)/3
 
     x2=specFilt(x, Ntrc)        #   5.T
@@ -76,8 +76,8 @@ def B_sqrt_op_Adj(x, var, rCTilde_sqrt, aliasing=3):
     xiR=r2c_Adj(xiC)            #   2.T
     return rCTilde_sqrt*xiR     #   1.T
 
-def B_op(x, var, rCTilde_sqrt):
-    return B_sqrt_op(B_sqrt_op_Adj(x, var, rCTilde_sqrt),
+def B_isoHomo_op(x, var, rCTilde_sqrt):
+    return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt),
                         var, rCTilde_sqrt)
 
 
@@ -133,8 +133,8 @@ if __name__=='__main__':
         yNoise[i]=rnd.gauss(mu, sigNoise)
         xNoise[i]=rnd.gauss(mu, sigNoise)
     testDirect=np.dot(xNoise,
-                        B_sqrt_op(yNoise, variances, CTilde_sqrt).conj())
-    testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, variances, CTilde_sqrt),
+                        B_sqrt_isoHomo_op(yNoise, variances, CTilde_sqrt).conj())
+    testAdjoint=np.dot(B_sqrt_isoHomo_op_Adj(xNoise, variances, CTilde_sqrt),
                         yNoise.conj())
     
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
@@ -145,7 +145,7 @@ if __name__=='__main__':
     NDirac=Ng/4
     xDirac[NDirac]=1.
     x0Dirac=g.x[NDirac]
-    xTest=B_op(xDirac, variances, CTilde_sqrt)
+    xTest=B_isoHomo_op(xDirac, variances, CTilde_sqrt)
         
 
     plt.figure()
