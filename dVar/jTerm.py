@@ -194,6 +194,9 @@ class JTerm(object):
 
     def createAnalysis(self):
         if np.any(np.isnan(self.minimum.gOpt)):
+            if not self.retall:
+                raise jTermError(
+                    "No previous state to fall back: try minimize with retall=True")
             nIters=len(self.minimum.allvecs)
             self.analysis=self.minimum.allvecs[nIters-2]
         else:

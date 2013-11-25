@@ -77,11 +77,8 @@ class PrecondJTerm(JTerm):
     #-----------------------------------------------------
 
     def createAnalysis(self):
-        if np.any(np.isnan(self.minimum.gOpt)):
-            nIters=len(self.minimum.allvecs)
-            self.analysis=self.xi2x(self.minimum.allvecs[nIters-2])
-        else:
-            self.analysis=self.xi2x(self.minimum.allvecs[nIters-1])
+         super(PrecondJTerm, self).createAnalysis()
+         self.analysis=self.xi2x(self.analysis)
 
     #------------------------------------------------------
     
