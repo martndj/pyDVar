@@ -200,7 +200,7 @@ class JTerm(object):
             nIters=len(self.minimum.allvecs)
             self.analysis=self.minimum.allvecs[nIters-2]
         else:
-            self.analysis=self.minimum.allvecs[nIters-1]
+            self.analysis=self.minimum.xOpt
                 
     #------------------------------------------------------
     def gradTest(self, x, output=True, powRange=[-1,-14]):
