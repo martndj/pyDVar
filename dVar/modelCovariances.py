@@ -92,7 +92,7 @@ def B_sqrt_str_op(xi, sig, strVec):
     return sig*strVec*xi
 
 def B_sqrt_str_op_Adj(x, sig, strVec):
-    return sig*strVec*x
+    return sig*np.dot(strVec,x)
 
 def B_str_op(x, sig, strVec):
     return B_sqrt_str_op(B_sqrt_str_op_Adj(x, sig, strVec),
@@ -115,6 +115,7 @@ if __name__=='__main__':
     N=11
     mu=1.
     sigRnd=1.
+    sig=5.
     
 
     
@@ -142,7 +143,6 @@ if __name__=='__main__':
     g=PeriodicGrid(Ng, 100., aliasing=1)
     
     
-    sig=5.
 
     if covType=='isoHomo':
         lCorr=5.
@@ -173,13 +173,20 @@ if __name__=='__main__':
     mu=0.; sigNoise=2.
     xNoise=np.zeros(g.N)
     yNoise=np.zeros(g.N)
+    xi=rnd.gauss(mu, sigNoise)
     for i in xrange(g.N):
         yNoise[i]=rnd.gauss(mu, sigNoise)
         xNoise[i]=rnd.gauss(mu, sigNoise)
-    testDirect=np.dot(xNoise,
-                        B_sqrt_op(yNoise, *B_args).conj())
-    testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, *B_args),
-                        yNoise.conj())
+
+    if covType=='isoHomo':
+        testDirect=np.dot(xNoise, B_sqrt_op(yNoise, *B_args).conj())
+        testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, *B_args), yNoise.conj())
+
+    if covType=='str':
+        testDirect=np.dot(xNoise, B_sqrt_str_op(xi,*B_args).conj())
+        testAdjoint=B_sqrt_op_Adj(xNoise, *B_args)*xi
+
+        
     
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
     print(testDirect-testAdjoint)
