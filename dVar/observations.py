@@ -423,8 +423,9 @@ class TimeWindowObs(object):
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
     
-    def plot(self, g, nbGraphLine=3, trajectory=None, style='go', 
-                trajectoryStyle='k'):
+    def plotObs(self, g, nbGraphLine=3, trajectory=None, 
+                marker='o', color='g', trajectoryStyle='k'):
+
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
             raise self.TimeWindowObsError("trajectory <None | Trajectory>")
         if self.nTimes < nbGraphLine:
@@ -438,9 +439,9 @@ class TimeWindowObs(object):
             i+=1
             sub=plt.subplot(nSubLine, nSubRow, i)
             if trajectory==None:
-                self[t].plot(g, axe=sub, style=style)
+                self[t].plotObs(g, axe=sub, color=color, marker=marker)
             else:
-                self[t].plot(g, axe=sub, style=style,
+                self[t].plotObs(g, axe=sub, color=color, marker=marker,
                                 continuousField=trajectory.whereTime(t),
                                 continuousFieldStyle=trajectoryStyle)
             sub.set_title("$t=%f$"%t)
