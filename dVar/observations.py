@@ -201,6 +201,20 @@ class StaticObs(object):
             raise self.StaticObsError("g <Grid>")
         return g.x[self.__pos2Idx(g)]
 
+
+    #------------------------------------------------------
+    
+    def prosca(self, y1, y2):
+        return np.dot(y1, np.dot(self.metric, y2))
+
+    #------------------------------------------------------
+
+    def norm(self, y):
+        return np.sqrt(self.prosca(y,y))
+
+
+    #------------------------------------------------------
+    #----| I/O method |------------------------------------
     #------------------------------------------------------
 
     def dump(self, fun):
