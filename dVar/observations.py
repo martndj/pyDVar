@@ -233,12 +233,38 @@ class StaticObs(object):
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
     
-    def plot(self, g, continuousField=None, axe=None, style='go', 
+    def plot(self, values, g,  axe=None, 
+                linestyle='', marker='o', **kwargs):
+
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        axe=self.__checkAxe(axe)
+        axe.plot(self.interpolate(g), values, marker=marker,
+                    linestyle=linestyle, **kwargs)
+        return axe
+
+    #-------------------------------------------------------
+
+    def plotModelEquivalent(self, field, g, axe=None, 
+                            linestyle='', marker='o', **kwargs):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        axe=self.__checkAxe(axe)
+        axe=self.plot(self.modelEquivalent(field, g), g, axe=axe, 
+                            linestyle='', marker='o', **kwargs)
+        return axe
+
+    #-------------------------------------------------------
+
+    def plotObs(self, g, continuousField=None, axe=None, 
+                marker='o', color='g',
                 continuousFieldStyle='k-', label=None):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
         axe=self.__checkAxe(axe)
-        axe.plot(self.interpolate(g), self.values, style, label=label)
+        axe=self.plot(self.values, g, axe=axe,
+                        marker=marker, color=color, linestyle='',
+                        label=label)
         if isinstance(continuousField, np.ndarray):
             if (continuousField.ndim==1 and 
                     len(continuousField)==g.N):
