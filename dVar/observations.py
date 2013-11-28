@@ -28,26 +28,9 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
 
 def degradTraj(traj, mu, sigma, seed=None):
     '''
-    Gaussian noise trajectory degradation
-
-    degrad(u,mu,sigma,seed=...)
-
-    traj    :  input trajectory
-    mu      :  noise mean (gaussian mean)
-    sigma   :  noise variance
+    <!> replaced by Trajectory.degrad()
     '''
-    if not isinstance(traj, Trajectory):
-        raise Exception("traj <Trajectory>")
-    rnd.seed(seed)
-    ic_degrad=degrad(traj.ic, mu, sigma, seed=seed)
-    traj_degrad=Trajectory(traj.grid)
-    traj_degrad.initialize(ic_degrad, traj.nDt, traj.dt)
-    traj_degrad[0]=ic_degrad
-    for i in xrange(1,traj.nDt+1):
-        for j in xrange(traj.grid.N):
-            traj_degrad[i][j]=traj[i][j]+rnd.gauss(mu, sigma)
-    traj_degrad.incrmTReal(finished=True, tReal=traj.tReal)
-    return traj_degrad
+    return traj.degrad(mu, sigma, seed=seed)
 
 
 #-----------------------------------------------------------
