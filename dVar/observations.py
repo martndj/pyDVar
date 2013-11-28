@@ -26,7 +26,7 @@ def degrad(signal,mu,sigma,seed=0.7349156729):
         sig_degrad[i]=signal[i]+rnd.gauss(mu, sigma)
     return sig_degrad
 
-def degradTraj(traj, mu, sigma, seed=0.7349156729):
+def degradTraj(traj, mu, sigma, seed=None):
     '''
     Gaussian noise trajectory degradation
 
@@ -48,6 +48,52 @@ def degradTraj(traj, mu, sigma, seed=0.7349156729):
             traj_degrad[i][j]=traj[i][j]+rnd.gauss(mu, sigma)
     traj_degrad.incrmTReal(finished=True, tReal=traj.tReal)
     return traj_degrad
+
+
+#-----------------------------------------------------------
+#----| Sampling |-------------------------------------------
+#-----------------------------------------------------------
+
+def rndSampling(grid, nObs, precision=2, seed=None):
+    if not isinstance(grid, Grid):
+        raise TypeError("grid <pseudoSpec>")
+
+    rnd.seed(seed)
+    coord=[]
+    i=0
+    while (i < nObs):
+        
+        pick=round(rnd.random()*grid.L, precision)
+        if grid.centered:
+            pick-=grid.L/2
+        if ((not pick in coord) and (pick <=grid.max()) 
+                and (pick >=grid.min()) ):
+            coord.append(pick)
+            i+=1
+
+    coord.sort()
+    return coord 
+
+
+#-----------------------------------------------------------
+#----| Correlation coefficient |----------------------------
+#-----------------------------------------------------------
+
+def corrCoef(grid, v, obs, bkg):
+    if not isinstance(grid, Grid):
+        raise TypeError("grid <pseudoSpec>")
+    if not isinstance(obs, StaticObs):
+        raise TypeError('obs <StaticObs>')
+    if ((not isinstance(v, np.ndarray)) or
+        (not isinstance(bkg, np.ndarray))):
+        raise TypeError('v, bkg <numpy.ndarray>')
+    departure=obs.values-obs.modelEquivalent(bkg, grid)
+    num=obs.prosca(obs.modelEquivalent(v, grid), departure)
+    denom=(obs.norm(obs.modelEquivalent(v, grid))*
+            obs.norm(departure))
+    return num/denom
+
+
 
 #-----------------------------------------------------------
 #----| Observation operators |------------------------------
