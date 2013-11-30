@@ -58,25 +58,6 @@ def rndSampling(grid, nObs, precision=2, seed=None):
     return coord 
 
 
-#-----------------------------------------------------------
-#----| Correlation coefficient |----------------------------
-#-----------------------------------------------------------
-
-def corrCoef(grid, v, obs, bkg):
-    if not isinstance(grid, Grid):
-        raise TypeError("grid <pseudoSpec>")
-    if not isinstance(obs, StaticObs):
-        raise TypeError('obs <StaticObs>')
-    if ((not isinstance(v, np.ndarray)) or
-        (not isinstance(bkg, np.ndarray))):
-        raise TypeError('v, bkg <numpy.ndarray>')
-    departure=obs.values-obs.modelEquivalent(bkg, grid)
-    num=obs.prosca(obs.modelEquivalent(v, grid), departure)
-    denom=(obs.norm(obs.modelEquivalent(v, grid))*
-            obs.norm(departure))
-    return num/denom
-
-
 
 #-----------------------------------------------------------
 #----| Observation operators |------------------------------
