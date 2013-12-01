@@ -84,6 +84,9 @@ def B_isoHomo_op(x, var, rCTilde_sqrt):
     return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt),
                         var, rCTilde_sqrt)
 
+
+def normBInv(x, grid):
+    pass
 #-------------------------------------------------
 #----| Structure function covariances |-----------
 #-------------------------------------------------

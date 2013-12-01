@@ -226,8 +226,9 @@ class StaticObs(object):
 
     #------------------------------------------------------
 
-    def correlation(self, y1, y2):
-        return self.prosca(y1,y2)/(self.norm(y1)*self.norm(y2))
+    def correlation(self, y):
+        return self.prosca(self.values, y)/(
+                self.norm(self.values)*self.norm(y))
 
     #------------------------------------------------------
     #----| I/O method |------------------------------------
@@ -273,7 +274,7 @@ class StaticObs(object):
     #-------------------------------------------------------
 
     def plotObs(self, g, continuousField=None, axe=None, 
-                marker='o', 
+                marker='o',   
                 continuousFieldStyle='k-', label=None):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")

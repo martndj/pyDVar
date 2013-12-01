@@ -15,17 +15,20 @@ def corrCoef(grid, v, obs, bkg):
         (not isinstance(bkg, np.ndarray))):
         raise TypeError('v, bkg <numpy.ndarray>')
     departure=obs.innovation(bkg, grid)
-    return obs.correlation(obs.modelEquivalent(v, grid), departure)
+    return obs.prosca(obs.modelEquivalent(v, grid), departure)/(
+            obs.norm(obs.modelEquivalent(v, grid))*
+            obs.norm(departure))
 
 
 #-----------------------------------------------------------
 #----| Observability evolution XP |-------------------------
 #-----------------------------------------------------------
 
-def evolutionXP(grid, natureRun, nObs, obsSig, coeffTimes, 
+def evolutionXP(natureRun, nObs, obsSig, coeffTimes, 
                 NRealisations=100):
 
-    def oneRealisation(grid, natureRun, nObs, obsSig, coeffTimes):
+    def oneRealisation(natureRun, nObs, obsSig, coeffTimes):
+        grid=natureRun.grid
         d_coeff={}
         x_bkg=grid.zeros() 
         for t in coeffTimes:
@@ -44,7 +47,8 @@ def evolutionXP(grid, natureRun, nObs, obsSig, coeffTimes,
                                 obsOp=dVar.obsOp_Coord, 
                                 obsOpTLMAdj=dVar.obsOp_Coord_Adj)
             
-            d_coeff[t]=corrCoef(grid, v, obs, x_bkg)
+            d_coeff[t]=obs.correlation(obs.modelEquivalent(v,grid))
+                
         return d_coeff
     #---------------------------------------------
     def rearrangeCoeff(listCoeff, NRealisations):
@@ -57,16 +61,15 @@ def evolutionXP(grid, natureRun, nObs, obsSig, coeffTimes,
     #---------------------------------------------
 
 
-    d_mean_var={}
+    d_mean_sig={}
     l_coeff=[]
     for i in xrange(NRealisations):
-        l_coeff.append(oneRealisation(grid, natureRun, 
-                                        nObs, obsSig, coeffTimes))
+        l_coeff.append(oneRealisation(natureRun, nObs, obsSig, coeffTimes))
     d_coeff=rearrangeCoeff(l_coeff, NRealisations)
     
     for t in coeffTimes:
-        d_mean_var[t]=[np.mean(d_coeff[t]),np.var(d_coeff[t])]
-    return d_mean_var
+        d_mean_sig[t]=[np.mean(d_coeff[t]),np.sqrt(np.var(d_coeff[t]))]
+    return d_mean_sig
 
 
 
