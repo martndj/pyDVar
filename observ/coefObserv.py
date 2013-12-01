@@ -14,11 +14,8 @@ def corrCoef(grid, v, obs, bkg):
     if ((not isinstance(v, np.ndarray)) or
         (not isinstance(bkg, np.ndarray))):
         raise TypeError('v, bkg <numpy.ndarray>')
-    departure=obs.values-obs.modelEquivalent(bkg, grid)
-    num=obs.prosca(obs.modelEquivalent(v, grid), departure)
-    denom=(obs.norm(obs.modelEquivalent(v, grid))*
-            obs.norm(departure))
-    return num/denom
+    departure=obs.innovation(bkg, grid)
+    return obs.correlation(obs.modelEquivalent(v, grid), departure)
 
 
 #-----------------------------------------------------------

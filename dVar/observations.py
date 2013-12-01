@@ -215,6 +215,8 @@ class StaticObs(object):
     #------------------------------------------------------
     
     def prosca(self, y1, y2):
+        if len(y1)<>self.nObs or len(y2)<>self.nObs:
+            raise self.StaticObsError()
         return np.dot(y1, np.dot(self.metric, y2))
 
     #------------------------------------------------------
@@ -222,6 +224,10 @@ class StaticObs(object):
     def norm(self, y):
         return np.sqrt(self.prosca(y,y))
 
+    #------------------------------------------------------
+
+    def correlation(self, y1, y2):
+        return self.prosca(y1,y2)/(self.norm(y1)*self.norm(y2))
 
     #------------------------------------------------------
     #----| I/O method |------------------------------------
