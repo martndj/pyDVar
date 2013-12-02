@@ -274,7 +274,7 @@ class StaticObs(object):
     #-------------------------------------------------------
 
     def plotObs(self, g, continuousField=None, axe=None, 
-                marker='o',   
+                marker='o',  correlation=False,  
                 continuousFieldStyle='k-', label=None):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
@@ -287,6 +287,10 @@ class StaticObs(object):
                     len(continuousField)==g.N):
                 axe.plot(g.x, continuousField, continuousFieldStyle, 
                     label=label)
+            if correlation==True:
+                axe.text(0.05,0.95,r'$\rho_c=%.2f$'%self.correlation(
+                        self.modelEquivalent(continuousField, g)),
+                        transform=axe.transAxes)
             else:
                 raise self.StaticObsError(
                         "incompatible continuous field dimensions")
@@ -440,7 +444,7 @@ class TimeWindowObs(object):
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
     
-    def plotObs(self, g, nbGraphLine=3, trajectory=None, 
+    def plotObs(self, g, nbGraphLine=3, trajectory=None, correlation=False, 
                 marker='o',  trajectoryStyle='k'):
 
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
@@ -460,7 +464,8 @@ class TimeWindowObs(object):
             else:
                 self[t].plotObs(g, axe=sub,  marker=marker,
                                 continuousField=trajectory.whereTime(t),
-                                continuousFieldStyle=trajectoryStyle)
+                                continuousFieldStyle=trajectoryStyle, 
+                                correlation=correlation)
             sub.set_title("$t=%f$"%t)
 
     #------------------------------------------------------
