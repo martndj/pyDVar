@@ -84,6 +84,12 @@ def B_isoHomo_op(x, var, rCTilde_sqrt):
     return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt),
                         var, rCTilde_sqrt)
 
+def make_BisoHomo_args(grid, bkgLC, bkgSig):
+    corr=fCorr_isoHomo(grid, bkgLC)
+    rCTilde_sqrt=rCTilde_sqrt_isoHomo(grid, corr)
+    var=bkgSig*np.ones(grid.N)
+    return (var, rCTilde_sqrt)
+
 
 def normBInv(x, grid):
     pass
