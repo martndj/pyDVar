@@ -275,13 +275,12 @@ class StaticObs(object):
 
     def plotObs(self, g, continuousField=None, axe=None, 
                 marker='o',  correlation=False,  
-                continuousFieldStyle='k-', label=None):
+                continuousFieldStyle='k-', **kwargs):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
         axe=self.__checkAxe(axe)
         axe=self.plot(self.values, g, axe=axe,
-                        marker=marker, linestyle='',
-                        label=label)
+                        marker=marker, linestyle='', **kwargs)
         if isinstance(continuousField, np.ndarray):
             if (continuousField.ndim==1 and 
                     len(continuousField)==g.N):
