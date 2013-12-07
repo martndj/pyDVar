@@ -284,10 +284,9 @@ class StaticObs(object):
         if isinstance(continuousField, np.ndarray):
             if (continuousField.ndim==1 and 
                     len(continuousField)==g.N):
-                axe.plot(g.x, continuousField, continuousFieldStyle, 
-                    label=label)
-            if correlation==True:
-                axe.text(0.05,0.95,r'$\rho_c=%.2f$'%self.correlation(
+                axe.plot(g.x, continuousField, continuousFieldStyle)
+                if correlation==True:
+                    axe.text(0.05,0.95,r'$\rho_c=%.2f$'%self.correlation(
                         self.modelEquivalent(continuousField, g)),
                         transform=axe.transAxes)
             else:
