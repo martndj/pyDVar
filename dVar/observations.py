@@ -274,7 +274,7 @@ class StaticObs(object):
     #-------------------------------------------------------
 
     def plotObs(self, g, continuousField=None, axe=None, 
-                marker='o',  correlation=False,  
+                marker='o',  correlation=False, xlim=None,   
                 continuousFieldStyle='k-', **kwargs):
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
@@ -292,6 +292,9 @@ class StaticObs(object):
             else:
                 raise self.StaticObsError(
                         "incompatible continuous field dimensions")
+        if xlim<>None:
+            axe.set_xlim(xlim)
+        return axe
 
 
     #-------------------------------------------------------
@@ -443,7 +446,7 @@ class TimeWindowObs(object):
     #-------------------------------------------------------
     
     def plotObs(self, g, nbGraphLine=3, trajectory=None, correlation=False, 
-                    trajectoryStyle='k', **kwargs):
+                    trajectoryStyle='k', xlim=None,  **kwargs):
 
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
             raise self.TimeWindowObsError("trajectory <None | Trajectory>")
@@ -454,18 +457,20 @@ class TimeWindowObs(object):
         nSubLine=self.nTimes/nSubRow
         if self.nTimes%nSubRow: nSubLine+=1
         i=0
+        axes=[]
         for t in self.times:
-            i+=1
-            sub=plt.subplot(nSubLine, nSubRow, i)
+            axes.append(plt.subplot(nSubLine, nSubRow, i+1))
             if trajectory==None:
-                self[t].plotObs(g, axe=sub,  **kwargs)
+                self[t].plotObs(g, axe=axes[i], xlim=xlim, **kwargs)
             else:
-                self[t].plotObs(g, axe=sub,
+                self[t].plotObs(g, axe=axes[i], xlim=xlim,
                                 continuousField=trajectory.whereTime(t),
                                 continuousFieldStyle=trajectoryStyle, 
                                 correlation=correlation, **kwargs)
-            sub.set_title("$t=%f$"%t)
+            axes[i].set_title("$t=%f$"%t)
+            i+=1
 
+        return axes
     #------------------------------------------------------
     #----| Classical overloads |---------------------------
     #------------------------------------------------------
