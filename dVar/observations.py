@@ -229,6 +229,10 @@ class StaticObs(object):
     def correlation(self, y):
         return self.prosca(self.values, y)/(
                 self.norm(self.values)*self.norm(y))
+    
+    def corrModelEq(self, x, grid):
+        y=self.modelEquivalent(x, grid)
+        return self.correlation(y)
 
     #------------------------------------------------------
     #----| I/O method |------------------------------------
