@@ -233,6 +233,11 @@ class StaticObs(object):
     def corrModelEq(self, x, grid):
         y=self.modelEquivalent(x, grid)
         return self.correlation(y)
+    
+    def corrModelEqBkg(self, v, x_bkg, grid):
+        inno=self.values-self.modelEquivalent(x_bkg, grid)
+        Hv=self.modelEquivalent(v,grid)
+        return self.prosca(Hv,inno)/(self.norm(inno)*self.norm(Hv))
 
     #------------------------------------------------------
     #----| I/O method |------------------------------------
@@ -279,7 +284,10 @@ class StaticObs(object):
 
     def plotObs(self, g, continuousField=None, axe=None, 
                 marker='o',  correlation=False, xlim=None,   
-                continuousFieldStyle='k-', **kwargs):
+                continuousFieldStyle='k-', 
+                continuousFieldLabel=None,
+                **kwargs):
+
         if not isinstance(g, Grid):
             raise self.StaticObsError("g <Grid>")
         axe=self.__checkAxe(axe)
@@ -288,7 +296,8 @@ class StaticObs(object):
         if isinstance(continuousField, np.ndarray):
             if (continuousField.ndim==1 and 
                     len(continuousField)==g.N):
-                axe.plot(g.x, continuousField, continuousFieldStyle)
+                axe.plot(g.x, continuousField, continuousFieldStyle, 
+                        label=continuousFieldLabel)
                 if correlation==True:
                     axe.text(0.05,0.95,r'$\rho_c=%.2f$'%self.correlation(
                         self.modelEquivalent(continuousField, g)),
@@ -450,7 +459,10 @@ class TimeWindowObs(object):
     #-------------------------------------------------------
     
     def plotObs(self, g, nbGraphLine=3, trajectory=None, correlation=False, 
-                    trajectoryStyle='k', xlim=None,  **kwargs):
+                    trajectoryStyle='k', xlim=None, 
+                    trajectoryLabel=None,
+                    **kwargs):
+
 
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
             raise self.TimeWindowObsError("trajectory <None | Trajectory>")
@@ -470,6 +482,7 @@ class TimeWindowObs(object):
                 self[t].plotObs(g, axe=axes[i], xlim=xlim,
                                 continuousField=trajectory.whereTime(t),
                                 continuousFieldStyle=trajectoryStyle, 
+                                continuousFieldLabel=trajectoryLabel,
                                 correlation=correlation, **kwargs)
             axes[i].set_title("$t=%f$"%t)
             i+=1
