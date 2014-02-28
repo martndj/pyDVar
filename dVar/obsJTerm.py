@@ -192,7 +192,7 @@ class TWObsJTerm(JTerm):
     #------------------------------------------------------
 
     def __init__(self, obs, nlModel, tlm, 
-                    t0=0., tFinal=None,
+                    t0=0., tf=None,
                     maxGradNorm=None): 
 
         if not isinstance(obs, TimeWindowObs):
@@ -201,10 +201,10 @@ class TWObsJTerm(JTerm):
 
         self.tWin=np.zeros(2)
         self.tWin[0]=t0
-        if tFinal==None : 
+        if tf==None : 
             self.tWin[1]=obs.tMax
         else:
-            self.tWin[1]=tFinal
+            self.tWin[1]=tf
 
 
 

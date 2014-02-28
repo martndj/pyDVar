@@ -175,10 +175,10 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
 
     def __init__(self, obs, nlModel, tlm, 
                     x_bkg, B_sqrt, B_sqrtAdj, B_sqrtArgs=(),
-                    t0=0., tFinal=None, maxGradNorm=None):
+                    t0=0., tf=None, maxGradNorm=None):
 
         super(PrecondTWObsJTerm, self).__init__(obs, nlModel, tlm, 
-                                            t0=t0, tFinal=tFinal,
+                                            t0=t0, tf=tf,
                                             maxGradNorm=maxGradNorm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
