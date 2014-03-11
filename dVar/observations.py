@@ -309,6 +309,32 @@ class StaticObs(object):
             axe.set_xlim(xlim)
         return axe
 
+    #-------------------------------------------------------
+
+    def plotInno(self, g, x, continuousField=None, axe=None, 
+                marker='o', xlim=None,   
+                continuousFieldStyle='k-', 
+                continuousFieldLabel=None,
+                **kwargs):
+
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        axe=self.__checkAxe(axe)
+        axe=self.plot(self.innovation(x, g), g, axe=axe,
+                        marker=marker, linestyle='', **kwargs)
+        if isinstance(continuousField, np.ndarray):
+            if (continuousField.ndim==1 and 
+                    len(continuousField)==g.N):
+                axe.plot(g.x, continuousField, continuousFieldStyle, 
+                        label=continuousFieldLabel)
+            else:
+                raise self.StaticObsError(
+                        "incompatible continuous field dimensions")
+        if xlim<>None:
+            axe.set_xlim(xlim)
+        return axe
+
+
 
     #-------------------------------------------------------
 
