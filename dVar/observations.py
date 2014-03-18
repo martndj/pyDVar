@@ -37,6 +37,16 @@ def degradTraj(traj, mu, sigma, seed=None):
 #----| Sampling |-------------------------------------------
 #-----------------------------------------------------------
 
+def homoSampling(grid, nObs):
+    if not isinstance(grid, Grid):
+        raise TypeError("grid <pseudoSpec>")
+
+    coord=[]
+    ObsDx=(grid.max()-grid.min())/nObs
+    for j in xrange(nObs):
+        coord.append(grid.min()+j*ObsDx)
+    return coord
+
 def rndSampling(grid, nObs, precision=2, seed=None):
     if not isinstance(grid, Grid):
         raise TypeError("grid <pseudoSpec>")
@@ -53,7 +63,11 @@ def rndSampling(grid, nObs, precision=2, seed=None):
                 and (pick >=grid.min()) ):
             coord.append(pick)
             i+=1
+    coord.sort()
+    return coord 
 
+def removeDuplicates(coord):
+    coord=list(set(coord))
     coord.sort()
     return coord 
 
