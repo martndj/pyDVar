@@ -150,8 +150,8 @@ class JTerm(object):
             raise self.JTermError("x_fGuess.dtype=='float64'")
         #----| Gradient test |--------------------
         if testGrad:
-            self.gradTest(x_fGuess,
-                            powRange=[testGradMinPow, testGradMaxPow])
+            self.testGradInit=self.gradTest(x_fGuess,
+                                powRange=[testGradMinPow, testGradMaxPow])
 
         #----| Minimizing |-----------------------
         minimizeReturn=self.minimizer(self.J, x_fGuess, args=self.args,
@@ -168,8 +168,8 @@ class JTerm(object):
                 print("Gradient and/or function calls not changing:")
                 print(" not performing final gradient test.")
             else:
-                self.gradTest(self.analysis,
-                            powRange=[testGradMinPow, testGradMaxPow])
+                self.testGradFinal=self.gradTest(self.analysis,
+                                powRange=[testGradMinPow, testGradMaxPow])
 
 
     #-----------------------------------------------------
