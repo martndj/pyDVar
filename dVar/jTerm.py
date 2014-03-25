@@ -167,6 +167,7 @@ class JTerm(object):
             if self.minimum.warnFlag==2:
                 print("Gradient and/or function calls not changing:")
                 print(" not performing final gradient test.")
+                self.testGradFinal=None
             else:
                 self.testGradFinal=self.gradTest(self.analysis,
                                 powRange=[testGradMinPow, testGradMaxPow])
