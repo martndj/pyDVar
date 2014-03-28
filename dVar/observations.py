@@ -511,6 +511,12 @@ class TimeWindowObs(object):
         if not isinstance(twObs, TimeWindowObs):
             raise TypeError()
         pass
+    #------------------------------------------------------
+    def cut(self, t0=None, tf=None):
+        '''
+        <TODO>
+        '''
+        pass
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
