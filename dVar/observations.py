@@ -254,6 +254,15 @@ class StaticObs(object):
         return self.prosca(Hv,inno)/(self.norm(inno)*self.norm(Hv))
 
     #------------------------------------------------------
+
+    def append(self, statObs):
+        '''
+        <TODO>
+        '''
+        pass
+        
+
+    #------------------------------------------------------
     #----| I/O method |------------------------------------
     #------------------------------------------------------
 
@@ -493,7 +502,15 @@ class TimeWindowObs(object):
         pickle.dump(self.times, fun)
         for i in xrange(self.nTimes):      
             self.d_Obs[self.times[i]].dump(fun)        
-
+    
+    #------------------------------------------------------
+    def append(self, twObs):
+        '''
+        <TODO>
+        '''
+        if not isinstance(twObs, TimeWindowObs):
+            raise TypeError()
+        pass
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
