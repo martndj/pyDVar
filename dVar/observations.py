@@ -133,18 +133,15 @@ class StaticObs(object):
                     obsOpArgs=(), metric=None):
 
         if isinstance(coord, Grid):
-            self.isGridded=True
             self.grid=coord
             self.coord=coord.x
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
             if coord.ndim <> 1:
                 raise self.StaticObsError("coord.ndim==1")
-            self.isGridded=False
             self.coord=coord
             self.nObs=len(coord)
         elif isinstance(coord, list): 
-            self.isGridded=False
             self.coord=np.array(coord)
             self.nObs=len(coord)
         else:
@@ -265,11 +262,7 @@ class StaticObs(object):
     #------------------------------------------------------
 
     def dump(self, fun):
-        pickle.dump(self.isGridded, fun)
-        if self.isGridded:
-            pickle.dump(self.grid, fun)
-        else:
-            pickle.dump(self.coord, fun)
+        pickle.dump(self.coord, fun)
         pickle.dump(self.metric, fun)
         pickle.dump(self.obsOp, fun)
         pickle.dump(self.obsOpArgs, fun)
@@ -372,13 +365,8 @@ class StaticObs(object):
 
     def __str__(self):
         output="____| StaticObs |___________________________"
-        if self.isGridded:
-            output+="\n   gridded observations\n"
-            output+=self.grid.__str__()
-        else:
-            output+="\n   discrete observations"
-            output+="\n   nObs=%d"%self.nObs
-            output+="\n   coord:\n     %s\n"%self.coord.__str__()
+        output+="\n   nObs=%d"%self.nObs
+        output+="\n   coord:\n     %s\n"%self.coord.__str__()
         output+="\n   observation operator:\n     %s"%self.obsOp
         output+="\n   observation tangeant operator adjoint:\n     %s"%self.obsOpTLMAdj
         output+="\n____________________________________________"
@@ -426,7 +414,6 @@ class StaticObs(object):
 
 def loadStaticObs(fun):
 
-    isGridded=pickle.load(fun)
     coord=pickle.load(fun)
     metric=pickle.load(fun)
     obsOp=pickle.load(fun)
@@ -539,14 +526,6 @@ class TimeWindowObs(object):
         for i in xrange(self.nTimes):      
             self.d_Obs[self.times[i]].dump(fun)        
     
-    #------------------------------------------------------
-    def append(self, twObs):
-        '''
-        <TODO>
-        '''
-        if not isinstance(twObs, TimeWindowObs):
-            raise TypeError()
-        pass
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
@@ -601,6 +580,24 @@ class TimeWindowObs(object):
         output+="\n================================================"
         return output
 
+    #------------------------------------------------------
+
+    def __add__(self, twObs):
+        if not isinstance(twObs, TimeWindowObs):
+            raise TypeError()
+
+        d_Obs1=self.d_Obs.copy()
+        d_Obs2=twObs.d_Obs.copy()
+        new_d_Obs={}
+        # check for cooccurences
+        for t in d_Obs1.keys():
+            if t in d_Obs2.keys():
+                new_d_Obs[t]=d_Obs1.pop(t)+d_Obs2.pop(t)
+        # merge the rest
+        new_d_Obs.update(d_Obs1)
+        new_d_Obs.update(d_Obs2)
+                
+        return TimeWindowObs(new_d_Obs)
 #=====================================================================
 
 def loadTWObs(fun):
