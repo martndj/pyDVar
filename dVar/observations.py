@@ -464,6 +464,7 @@ class TimeWindowObs(object):
 
         self.nTimes=len(self.times)
         self.tMax=np.max(self.times)
+        self.tMin=np.max(self.times)
         self.d_Obs=d_Obs
         self.nObs=0
         for t in self.times:
@@ -526,6 +527,17 @@ class TimeWindowObs(object):
         for i in xrange(self.nTimes):      
             self.d_Obs[self.times[i]].dump(fun)        
     
+    #------------------------------------------------------
+    def cut(self, tMin=None, tMax=None):
+        if tMin==None: tMin=self.tMin
+        if tMax==None: tMax=self.tMax
+
+        cut_d_Obs={}
+        for t in self.d_Obs.keys():
+            if t >= tMin and t<= tMax:
+                cut_d_Obs[t]=self[t]
+                
+        return TimeWindowObs(cut_d_Obs)
     #-------------------------------------------------------
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
