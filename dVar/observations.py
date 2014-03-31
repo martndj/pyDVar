@@ -141,21 +141,26 @@ class StaticObs(object):
             if coord.ndim <> 1:
                 raise self.StaticObsError("coord.ndim==1")
             self.isGridded=False
-            order=np.argsort(coord)
-            self.coord=coord[order]
+            self.coord=coord
+            self.nObs=len(coord)
+        elif isinstance(coord, list): 
+            self.isGridded=False
+            self.coord=np.array(coord)
             self.nObs=len(coord)
         else:
             raise self.StaticObsError(
                 "coord <pseudoSpec1D.Grid | numpy.ndarray>")
 
-        if not isinstance(values, np.ndarray):
-            raise self.StaticObsError("coord <numpy.ndarray>")
-        if values.ndim<>1 or len(values)<>self.nObs:
-            raise self.StaticObsError("len(values)==self.nObs")
-        if self.isGridded:
-            self.values=values
+        if isinstance(values, list):
+            values=np.array(values)
+            if len(values)<>self.nObs:
+                raise ValueError()
+        elif isinstance(values, np.ndarray):
+            if values.ndim<>1 or len(values)<>self.nObs:
+                raise ValueError()
         else:
-            self.values=values[order]
+            raise TypeError()
+        self.values=values
 
         if not ((callable(obsOp) and callable(obsOpTLMAdj)) or 
                 (obsOp==None and obsOpTLMAdj==None)):
@@ -175,6 +180,7 @@ class StaticObs(object):
             if metric.ndim==1:
                 self.metric=np.diag(metric)
             elif metric.ndim==2:
+                # this is why coord must not be sorted!
                 self.metric=metric
             else:
                 raise self.StaticObsError("metric.ndim=[1|2]")
@@ -253,14 +259,6 @@ class StaticObs(object):
         Hv=self.modelEquivalent(v,grid)
         return self.prosca(Hv,inno)/(self.norm(inno)*self.norm(Hv))
 
-    #------------------------------------------------------
-
-    def append(self, statObs):
-        '''
-        <TODO>
-        '''
-        pass
-        
 
     #------------------------------------------------------
     #----| I/O method |------------------------------------
@@ -386,6 +384,44 @@ class StaticObs(object):
         output+="\n____________________________________________"
         return output
 
+    #------------------------------------------------------
+
+    def _extendMetric(self, statObs):
+        '''
+        Build the observation operator metric
+        assuming observation sets independant
+        '''
+        metric=np.zeros(shape=(self.nObs+statObs.nObs,
+                              self.nObs+statObs.nObs))
+        metric[:self.nObs, :self.nObs]=self.metric
+        metric[-statObs.nObs:, -statObs.nObs:]=statObs.metric
+        return metric
+
+    def __add__(self, statObs, obsOpEq=True):
+        if not isinstance(statObs, StaticObs): raise TypeError()
+        
+        if obsOpEq:
+            if (self.obsOp<>statObs.obsOp or
+                self.obsOpTLMAdj<>statObs.obsOpTLMAdj or
+                self.obsOpArgs<>statObs.obsOpArgs):
+                raise ValueError()
+
+        metric=self._extendMetric(statObs)
+
+        newCoord=self.coord.tolist()
+        newCoord.extend(statObs.coord.tolist())
+
+        newValues=self.values.tolist()
+        newValues.extend(statObs.values.tolist())
+
+        return StaticObs(newCoord, newValues, 
+                         obsOp=self.obsOp, obsOpTLMAdj=self.obsOpTLMAdj,
+                         obsOpArgs=self.obsOpArgs, metric=metric)
+
+        
+        
+        
+        
 #=====================================================================
 
 def loadStaticObs(fun):
