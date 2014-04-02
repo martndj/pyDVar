@@ -381,8 +381,14 @@ class StaticObs(object):
         '''
         metric=np.zeros(shape=(self.nObs+statObs.nObs,
                               self.nObs+statObs.nObs))
-        metric[:self.nObs, :self.nObs]=self.metric
-        metric[-statObs.nObs:, -statObs.nObs:]=statObs.metric
+        if self.nObs>0 and statObs.nObs>0:
+            metric[:self.nObs, :self.nObs]=self.metric
+            metric[-statObs.nObs:, -statObs.nObs:]=statObs.metric
+        elif self.nObs>0 and statObs.nObs==0:
+            metric=self.metric
+        elif self.nObs==0:
+            metric=statObs.metric 
+        
         return metric
 
     def __add__(self, statObs, obsOpEq=True):
