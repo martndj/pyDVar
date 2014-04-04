@@ -222,28 +222,45 @@ class JTerm(object):
             s+="%4d %+25.15f  %+25.15f\n"%(i, test[i][0], test[i][1])
         return s
 
-    def gradTest(self, x, output=True, powRange=[-1,-14], checkNan=True):
+    def gradTest(self, x, powRange=[-1,-14], 
+                    findFirst9=True,
+                    output=True):
         J0=self._costFunc(x)
         gradJ0=self._gradCostFunc(x)
         n2GradJ0=np.dot(gradJ0, gradJ0)
 
-        powRangeTrial=powerRange
+        powRangeTrial=powRange[:]
         test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
 
         if output:  print(self.gradTestString(J0, n2GradJ0, test))
-        if checkNan:
-            while np.any(np.isnan(test.values())):
+
+        if findFirst9:
+            powerMin=powRangeTrial[1]
+            for power in sorted(test.keys()):
+                digits=str(test[power][1])
+                if digits=='nan':
+                    break
+                fDigit,mantissa=digits.split('.')
+                if (int(fDigit)==0 and int(mantissa[0])==9):
+                    powerMin=power
+                
+            if -powRangeTrial[1]+powerMin<7:
+                 print("  <!> not enough powers left to conclude test")
+                 powRangeTrial[0]=powerMin
+                 powRangeTrial[1]=powerMin-7
+                 print("      redoing on %s"%powRangeTrial)
+                 test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
+            else:
+                testTmp={}
                 for power in sorted(test.keys()):
-                    if not np.isnan(test[power][1]):
-                        powerMin=power
-                dPRange=powRangeTrial[1]-powRangeTrial[0]
-                powRangeTrial[0]=powerMin
-                powRangeTrial[1]=powerMin+dPRange
-                print("  <!> nan <!> "
-                    +"going smaller epsilon: %s"%powRangeTrial)
-            
-                test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
-                if output:  print(self.gradTestString(J0, n2GradJ0, test))
+                    if power <= powerMin:
+                        testTmp[power]=test[power]
+                    else:
+                        break
+                test=testTmp
+
+            if output:  print(self.gradTestString(J0, n2GradJ0, test))
+
 
         return (J0, n2GradJ0, test)
 
