@@ -204,11 +204,7 @@ class JTerm(object):
             self.analysis=self.minimum.xOpt
                 
     #------------------------------------------------------
-    def gradTest(self, x, output=True, powRange=[-1,-14]):
-        J0=self._costFunc(x)
-        gradJ0=self._gradCostFunc(x)
-        n2GradJ0=np.dot(gradJ0, gradJ0)
-
+    def _gTest(self, x, J0, gradJ0, n2GradJ0, powRange):
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
@@ -216,13 +212,38 @@ class JTerm(object):
             
             res=((J0-Jeps)/(eps*n2GradJ0))
             test[power]=[Jeps, res]
+        return test
 
-        if output:
-            print("----| Gradient test |------------------")
-            print("  J0      =%+25.15f"%J0)
-            print(" |grad|^2 =%+25.15f"%n2GradJ0)
-            for i in  (np.sort(test.keys())[::-1]):
-                print("%4d %+25.15f  %+25.15f"%(i, test[i][0], test[i][1]))
+    def gradTestString(self, J0, n2GradJ0, test):
+        s="----| Gradient test |------------------\n"
+        s+="  J0      =%+25.15f\n"%J0
+        s+=" |grad|^2 =%+25.15f\n"%n2GradJ0
+        for i in  (np.sort(test.keys())[::-1]):
+            s+="%4d %+25.15f  %+25.15f\n"%(i, test[i][0], test[i][1])
+        return s
+
+    def gradTest(self, x, output=True, powRange=[-1,-14], checkNan=True):
+        J0=self._costFunc(x)
+        gradJ0=self._gradCostFunc(x)
+        n2GradJ0=np.dot(gradJ0, gradJ0)
+
+        powRangeTrial=powerRange
+        test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
+
+        if output:  print(self.gradTestString(J0, n2GradJ0, test))
+        if checkNan:
+            while np.any(np.isnan(test.values())):
+                for power in sorted(test.keys()):
+                    if not np.isnan(test[power][1]):
+                        powerMin=power
+                dPRange=powRangeTrial[1]-powRangeTrial[0]
+                powRangeTrial[0]=powerMin
+                powRangeTrial[1]=powerMin+dPRange
+                print("  <!> nan <!> "
+                    +"going smaller epsilon: %s"%powRangeTrial)
+            
+                test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
+                if output:  print(self.gradTestString(J0, n2GradJ0, test))
 
         return (J0, n2GradJ0, test)
 
