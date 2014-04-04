@@ -204,6 +204,8 @@ class JTerm(object):
             self.analysis=self.minimum.xOpt
                 
     #------------------------------------------------------
+    #----| Gradient test |---------------------------------
+
     def _gTest(self, x, J0, gradJ0, n2GradJ0, powRange):
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
@@ -245,11 +247,12 @@ class JTerm(object):
                     powerMin=power
                 
             if -powRangeTrial[1]+powerMin<7:
-                 print("  <!> not enough powers left to conclude test")
-                 powRangeTrial[0]=powerMin
-                 powRangeTrial[1]=powerMin-7
-                 print("      redoing on %s"%powRangeTrial)
-                 test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
+                print("  <!> not enough powers left to conclude test")
+                powRangeTrial[0]=powerMin
+                powRangeTrial[1]=powerMin-7
+                print("      redoing on %s"%powRangeTrial)
+                test=self._gTest(x, J0, gradJ0, n2GradJ0, powRangeTrial)
+                if output:  print(self.gradTestString(J0, n2GradJ0, test))
             else:
                 testTmp={}
                 for power in sorted(test.keys()):
@@ -259,7 +262,6 @@ class JTerm(object):
                         break
                 test=testTmp
 
-            if output:  print(self.gradTestString(J0, n2GradJ0, test))
 
 
         return (J0, n2GradJ0, test)
