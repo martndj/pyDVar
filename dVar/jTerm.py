@@ -169,7 +169,7 @@ class JTerm(object):
                 print(" not performing final gradient test.")
                 self.testGradFinal=None
             else:
-                self.testGradFinal=self.gradTest(self.analysis,
+                self.testGradFinal=self.gradTest(self.minimum.xOpt,
                                 powRange=[testGradMinPow, testGradMaxPow])
 
 
