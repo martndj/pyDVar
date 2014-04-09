@@ -139,8 +139,9 @@ class JTerm(object):
 
 
     def minimize(self, x_fGuess, maxiter=50, retall=True,
-                    testGrad=True, convergence=True, 
+                    testGrad=True, finalTestGrad=False, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
+
 
         self.retall=retall
         self.minimizer=sciOpt.fmin_bfgs
@@ -163,7 +164,7 @@ class JTerm(object):
         self.createAnalysis()
 
         #----| Final Gradient test |--------------
-        if testGrad:
+        if finalTestGrad:
             if self.minimum.warnFlag==2:
                 print("Gradient and/or function calls not changing:")
                 print(" not performing final gradient test.")
@@ -225,7 +226,7 @@ class JTerm(object):
         return s
 
     def gradTest(self, x, powRange=[-1,-14], 
-                    findFirst9=True,
+                    findFirst9=False,
                     output=True):
         J0=self._costFunc(x)
         gradJ0=self._gradCostFunc(x)
