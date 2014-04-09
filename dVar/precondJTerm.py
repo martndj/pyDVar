@@ -83,12 +83,13 @@ class PrecondJTerm(JTerm):
     #------------------------------------------------------
     
     def minimize(self, maxiter=50, retall=True,
-                    testGrad=True, convergence=True, 
+                    testGrad=True, finalTestGrad=False, convergence=True, 
                     testGradMinPow=-1, testGradMaxPow=-14):
         super(PrecondJTerm, self).minimize(
                     np.zeros(self.modelGrid.N), maxiter=maxiter,
                     retall=retall,
-                    testGrad=testGrad, convergence=convergence, 
+                    testGrad=testGrad, finalTestGrad=finalTestGrad,
+                    convergence=convergence, 
                     testGradMinPow=testGradMinPow,
                     testGradMaxPow=testGradMaxPow)
         
