@@ -53,11 +53,11 @@ def ifft_Adj(x):
     xi=xi/N
     return xi
 
-def B_sqrt_isoHomo_op(xi, var, rCTilde_sqrt, aliasing=3):
+def B_sqrt_isoHomo_op(xi, sig, rCTilde_sqrt, aliasing=3):
     """
         B_{1/2} operator
 
-        var             :   1D array of variances
+        sig             :   1D array of std
                             (diagonal os Sigma matrix)
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
@@ -67,28 +67,28 @@ def B_sqrt_isoHomo_op(xi, var, rCTilde_sqrt, aliasing=3):
     xiR=rCTilde_sqrt*xi         #   1
     xiC=r2c(xiR)                #   2
     x1=np.fft.ifft(xiC).real    #   3
-    x2=x1*var                   #   4
+    x2=x1*sig                   #   4
     return specFilt(x2, Ntrc)   #   5
 
 
-def B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt, aliasing=3):
+def B_sqrt_isoHomo_op_Adj(x, sig, rCTilde_sqrt, aliasing=3):
     Ntrc=(len(x)-1)/3
 
     x2=specFilt(x, Ntrc)        #   5.T
-    x1=x2*var                   #   4.T
+    x1=x2*sig                   #   4.T
     xiC=ifft_Adj(x1)            #   3.T
     xiR=r2c_Adj(xiC)            #   2.T
     return rCTilde_sqrt*xiR     #   1.T
 
-def B_isoHomo_op(x, var, rCTilde_sqrt):
-    return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, var, rCTilde_sqrt),
-                        var, rCTilde_sqrt)
+def B_isoHomo_op(x, sig, rCTilde_sqrt):
+    return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, sig, rCTilde_sqrt),
+                        sig, rCTilde_sqrt)
 
 def make_BisoHomo_args(grid, bkgLC, bkgSig):
     corr=fCorr_isoHomo(grid, bkgLC)
     rCTilde_sqrt=rCTilde_sqrt_isoHomo(grid, corr)
-    var=bkgSig*np.ones(grid.N)
-    return (var, rCTilde_sqrt)
+    sig=bkgSig*np.ones(grid.N)
+    return (sig, rCTilde_sqrt)
 
 
 def normBInv(x, grid):
@@ -118,13 +118,13 @@ if __name__=='__main__':
     rnd.seed(0.4573216806)
     
 
-    covType='str'
-    #covType='isoHomo'
+    #covType='str'
+    covType='isoHomo'
 
     N=11
     mu=1.
     sigRnd=1.
-    sig=5.
+    sig=0.1
     
 
     
@@ -155,14 +155,14 @@ if __name__=='__main__':
 
     if covType=='isoHomo':
         lCorr=5.
-        variances=sig*np.ones(g.N)
+        sigMatrix=sig*np.ones(g.N)
         fCorr=fCorr_isoHomo(g, lCorr)
         CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
 
         B_sqrt_op=B_sqrt_isoHomo_op
         B_sqrt_op_Adj=B_sqrt_isoHomo_op_Adj
         B_op=B_isoHomo_op
-        B_args=(variances, CTilde_sqrt)
+        B_args=(sigMatrix, CTilde_sqrt)
 
 
     elif covType=='str':
