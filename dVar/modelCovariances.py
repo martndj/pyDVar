@@ -90,6 +90,19 @@ def make_BisoHomo_args(grid, bkgLC, bkgSig):
     sig=bkgSig*np.ones(grid.N)
     return (sig, rCTilde_sqrt)
 
+def errStr_isoHomo(grid, bkgLC, bkgSig, seed=None):
+    '''
+    Produce a random isotropic and homogeneous error structure 
+        (coherent with the statics assimilation statistics using
+            B_sqrt_isoHomo_op)
+    '''
+    xi=grid.zeros()
+    B_args=make_BisoHomo_args(grid, bkgLC, bkgSig)
+
+    np.random.seed(seed)
+    for i in xrange(grid.N):
+        xi[i]=np.random.normal()
+    return B_sqrt_isoHomo_op(xi, *B_args)
 
 def normBInv(x, grid):
     pass
