@@ -11,3 +11,4 @@ from jTerm import *
 from obsJTerm import *
 from precondJTerm import *
 from spectralLib import *
+from errorStruct import * 
