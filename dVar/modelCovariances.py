@@ -90,7 +90,7 @@ def make_BisoHomo_args(grid, bkgLC, bkgSig):
     sig=bkgSig*np.ones(grid.N)
     return (sig, rCTilde_sqrt)
 
-def errStr_isoHomo(grid, bkgLC, bkgSig, seed=None):
+def errStr_isoHomo(grid, bkgLC, bkgSig=1., seed=None):
     '''
     Produce a random isotropic and homogeneous error structure 
         (coherent with the statics assimilation statistics using
