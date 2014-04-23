@@ -219,10 +219,10 @@ class JTerm(object):
 
     def gradTestString(self, J0, n2GradJ0, test):
         s="----| Gradient test |------------------\n"
-        s+="  J0      =%+25.15f\n"%J0
-        s+=" |grad|^2 =%+25.15f\n"%n2GradJ0
+        s+="  J0      =%+25.15e\n"%J0
+        s+=" |grad|^2 =%+25.15e\n"%n2GradJ0
         for i in  (np.sort(test.keys())[::-1]):
-            s+="%4d %+25.15f  %+25.15f\n"%(i, test[i][0], test[i][1])
+            s+="%4d %+25.15e  %+25.15e\n"%(i, test[i][0], test[i][1])
         return s
 
     def gradTest(self, x, powRange=[-1,-14], 
