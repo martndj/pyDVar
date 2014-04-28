@@ -277,6 +277,19 @@ class TWObsJTerm(JTerm):
         d_NormInno={}
         for t in d_inno.keys():
             d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
+        
+        grad=-self.opH_Adjoint(d_NormInno, x)
+        if normalize:
+            grad= (1./self.nObs)*grad
+        else:
+            pass
+        
+        return grad
+
+    #------------------------------------------------------
+
+    def opH_Adjoint(self, d_NormInno, x):
+
         #----| building reference trajectory |--------
         tInt=np.max(self.obs.times)-self.tWin[0]
         traj_x=self.nlModel.integrate(x, tInt, t0=self.tWin[0])
@@ -301,15 +314,8 @@ class TWObsJTerm(JTerm):
 
             MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
             w=MAdjObs
+        return MAdjObs
         
-        grad=-MAdjObs
-        if normalize:
-            grad= (1./self.nObs)*grad
-        else:
-            pass
-        
-        return grad
-
 
 #=====================================================================
 #---------------------------------------------------------------------
