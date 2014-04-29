@@ -273,7 +273,8 @@ class TWObsJTerm(JTerm):
 
     def _gradCostFunc(self, x, normalize=False):
         self.__xValidate(x)
-        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
+        #d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
+        d_inno=self.obs.innovation(x, self.tlm, t0=self.tWin[0])
         d_NormInno={}
         for t in d_inno.keys():
             d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])

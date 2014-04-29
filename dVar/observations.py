@@ -1,5 +1,5 @@
 import numpy as np
-from pseudoSpec1D import Grid, Launcher, Trajectory
+from pseudoSpec1D import Grid, Launcher, TLMLauncher, Trajectory
 import random as rnd
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
@@ -210,6 +210,15 @@ class StaticObs(object):
         else:
             return x
 
+    def modelEquivalent_Adj(self, obs, g):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        if self.obsOpTLMAdj<>None:
+            return self.obsOpTLMAdj(obs, g, self.coord, *self.obsOpArgs)
+        else:
+            return obs
+
+
     #------------------------------------------------------
     
     def innovation(self, x, g):
@@ -220,6 +229,11 @@ class StaticObs(object):
         if not (x.ndim==1 or len(x)==g.N):
             raise self.StaticObsError("x.shape=(g.N)")
         return self.values-self.modelEquivalent(x, g)
+
+    def innovation_Adj(self, d, g):
+        if not isinstance(g, Grid):
+            raise self.StaticObsError("g <Grid>")
+        return -self.modelEquivalent_Adj(d, g)
 
     #------------------------------------------------------
 
@@ -483,21 +497,30 @@ class TimeWindowObs(object):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __propagatorValidate(self, propagator):
-        if not isinstance(propagator, Launcher):
-            raise self.TimeWindowObsError("propagator <Launcher>")
+    def __propagatorValidate(self, propagator, tlm=False):
+        if not tlm:
+            if not isinstance(propagator, Launcher):
+                raise ValueError("propagator <Launcher>")
+        else:
+            if not isinstance(propagator, TLMLauncher)):
+                raise ValueError("propagator <TLMLauncher>")
+            if not tlm.isReferenced:
+                raise ValueError("TLM not referenced")
 
     #------------------------------------------------------
 
-    def __integrate(self, x, propagator, t0=0.):
-        self.__propagatorValidate(propagator)
+    def __integrate(self, x, propagator, t0=0., tlm=False):
+        self.__propagatorValidate(propagator, tlm=tlm)
         d_xt={}
         x0=x
         for t in self.times:
             if t==t0:
                 d_xt[t]=x0
             else:
-                d_xt[t]=(propagator.integrate(x0,t-t0)).final    
+                if not tlm:
+                    d_xt[t]=(propagator.integrate(x0,t-t0)).final    
+                else:   
+                    d_xt[t]=propagator.integrate(x0,t-t0)   
             x0=d_xt[t]
             t0=t
         
@@ -514,6 +537,17 @@ class TimeWindowObs(object):
         for t in self.times:
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
         return d_Hx
+
+    def modelEqTLM(self, x, propagator, t0=0.):
+        self.__propagatorValidate(propagator, tlm=True)
+        g=propagator.grid
+        d_Hx={}
+        # ici: tlm does not return traj...
+        d_xt=self.__integrate(x, propagator, t0=t0, tlm=True)
+        for t in self.times:
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
+        return d_Hx
+        
 
     #------------------------------------------------------
     
