@@ -273,13 +273,13 @@ class TWObsJTerm(JTerm):
 
     def _gradCostFunc(self, x, normalize=False):
         self.__xValidate(x)
-        #d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
-        d_inno=self.obs.innovation(x, self.tlm, t0=self.tWin[0])
+        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
         for t in d_inno.keys():
             d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
         
-        grad=-self.opH_Adjoint(d_NormInno, x)
+        grad=-self.obs.modelEquivalent_Adj(d_NormInno, x, 
+                                self.nlModel, self.tlm, t0=self.tWin[0])
         if normalize:
             grad= (1./self.nObs)*grad
         else:
@@ -287,36 +287,6 @@ class TWObsJTerm(JTerm):
         
         return grad
 
-    #------------------------------------------------------
-
-    def opH_Adjoint(self, d_NormInno, x):
-
-        #----| building reference trajectory |--------
-        tInt=np.max(self.obs.times)-self.tWin[0]
-        traj_x=self.nlModel.integrate(x, tInt, t0=self.tWin[0])
-        self.tlm.reference(traj_x)
-        #----| Adjoint retropropagation |-------------
-        i=0
-        MAdjObs=np.zeros(self.nlModel.grid.N)
-        for t in self.obs.times[::-1]:
-            i+=1
-            if i<self.nTimes:
-                t_pre=self.obs.times[-1-i]
-            else:
-                t_pre=self.tWin[0]
-
-            if self.obs[t].obsOpTLMAdj==None:
-                w=d_NormInno[t]
-            else:   
-                w=self.obs[t].obsOpTLMAdj(d_NormInno[t], 
-                                            self.nlModel.grid,
-                                            self.obs[t].coord,
-                                            *self.obs[t].obsOpArgs)
-
-            MAdjObs=self.tlm.adjoint(w+MAdjObs, tInt=t-t_pre, t0=t_pre)
-            w=MAdjObs
-        return MAdjObs
-        
 
 #=====================================================================
 #---------------------------------------------------------------------

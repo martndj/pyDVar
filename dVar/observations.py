@@ -121,8 +121,6 @@ class StaticObs(object):
                             obsOp(x_state, x_grid, x_obsSpaceCoord, 
                                     *obsOpArgs)
     """
-    class StaticObsError(Exception):
-        pass
 
 
     #------------------------------------------------------
@@ -138,14 +136,14 @@ class StaticObs(object):
             self.nObs=coord.N
         elif isinstance(coord, np.ndarray):
             if coord.ndim <> 1:
-                raise self.StaticObsError("coord.ndim==1")
+                raise ValueError("coord.ndim==1")
             self.coord=coord
             self.nObs=len(coord)
         elif isinstance(coord, list): 
             self.coord=np.array(coord)
             self.nObs=len(coord)
         else:
-            raise self.StaticObsError(
+            raise TypeError(
                 "coord <pseudoSpec1D.Grid | numpy.ndarray>")
 
         if isinstance(values, list):
@@ -161,10 +159,10 @@ class StaticObs(object):
 
         if not ((callable(obsOp) and callable(obsOpTLMAdj)) or 
                 (obsOp==None and obsOpTLMAdj==None)):
-            raise self.StaticObsError(
+            raise TypeError(
                                 "obsOp, obsOpTLMAdj <function | None>")
         if not isinstance(obsOpArgs, tuple):
-            raise self.StaticObsError("obsOpArgs <tuple>")
+            raise TypeError("obsOpArgs <tuple>")
         self.obsOp=obsOp
         self.obsOpTLMAdj=obsOpTLMAdj
         self.obsOpArgs=obsOpArgs
@@ -180,9 +178,9 @@ class StaticObs(object):
                 # this is why coord must not be sorted!
                 self.metric=metric
             else:
-                raise self.StaticObsError("metric.ndim=[1|2]")
+                raise ValueError("metric.ndim=[1|2]")
         else:   
-            raise self.StaticObsError("metric <None | numpy.ndarray>")
+            raise TypeError("metric <None | numpy.ndarray>")
     #------------------------------------------------------
     #----| Private methods |-------------------------------
     #------------------------------------------------------
@@ -200,11 +198,11 @@ class StaticObs(object):
 
     def modelEquivalent(self, x, g):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         if not isinstance(x, np.ndarray):
-            raise self.StaticObsError("x <numpy.ndarray>")
+            raise TypeError("x <numpy.ndarray>")
         if not (x.ndim==1 or len(x)==g.N):
-            raise self.StaticObsError("x.shape=(g.N)")
+            raise ValueError("x.shape=(g.N)")
         if self.obsOp<>None:
             return self.obsOp(x, g, self.coord, *self.obsOpArgs)
         else:
@@ -212,7 +210,7 @@ class StaticObs(object):
 
     def modelEquivalent_Adj(self, obs, g):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         if self.obsOpTLMAdj<>None:
             return self.obsOpTLMAdj(obs, g, self.coord, *self.obsOpArgs)
         else:
@@ -223,23 +221,23 @@ class StaticObs(object):
     
     def innovation(self, x, g):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         if not isinstance(x, np.ndarray):
-            raise self.StaticObsError("x <numpy.ndarray>")
+            raise TypeError("x <numpy.ndarray>")
         if not (x.ndim==1 or len(x)==g.N):
-            raise self.StaticObsError("x.shape=(g.N)")
+            raise ValueError("x.shape=(g.N)")
         return self.values-self.modelEquivalent(x, g)
 
     def innovation_Adj(self, d, g):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         return -self.modelEquivalent_Adj(d, g)
 
     #------------------------------------------------------
 
     def interpolate(self, g):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         return g.x[self.__pos2Idx(g)]
 
 
@@ -247,7 +245,7 @@ class StaticObs(object):
     
     def prosca(self, y1, y2):
         if len(y1)<>self.nObs or len(y2)<>self.nObs:
-            raise self.StaticObsError()
+            raise ValueError()
         return np.dot(y1, np.dot(self.metric, y2))
 
     #------------------------------------------------------
@@ -291,7 +289,7 @@ class StaticObs(object):
                 linestyle='', marker='o', **kwargs):
 
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         axe=self.__checkAxe(axe)
         axe.plot(self.interpolate(g), values, marker=marker,
                     linestyle=linestyle, **kwargs)
@@ -302,7 +300,7 @@ class StaticObs(object):
     def plotModelEquivalent(self, field, g, axe=None, 
                             linestyle='', marker='o', **kwargs):
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         axe=self.__checkAxe(axe)
         axe=self.plot(self.modelEquivalent(field, g), g, axe=axe, 
                             linestyle='', marker='o', **kwargs)
@@ -317,7 +315,7 @@ class StaticObs(object):
                 **kwargs):
 
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         axe=self.__checkAxe(axe)
         axe=self.plot(self.values, g, axe=axe,
                         marker=marker, linestyle='', **kwargs)
@@ -331,7 +329,7 @@ class StaticObs(object):
                         self.modelEquivalent(continuousField, g)),
                         transform=axe.transAxes)
             else:
-                raise self.StaticObsError(
+                raise ValueError(
                         "incompatible continuous field dimensions")
         if xlim<>None:
             axe.set_xlim(xlim)
@@ -346,7 +344,7 @@ class StaticObs(object):
                 **kwargs):
 
         if not isinstance(g, Grid):
-            raise self.StaticObsError("g <Grid>")
+            raise TypeError("g <Grid>")
         axe=self.__checkAxe(axe)
         axe=self.plot(self.innovation(x, g), g, axe=axe,
                         marker=marker, linestyle='', **kwargs)
@@ -356,7 +354,7 @@ class StaticObs(object):
                 axe.plot(g.x, continuousField, continuousFieldStyle, 
                         label=continuousFieldLabel)
             else:
-                raise self.StaticObsError(
+                raise ValueError(
                         "incompatible continuous field dimensions")
         if xlim<>None:
             axe.set_xlim(xlim)
@@ -370,7 +368,7 @@ class StaticObs(object):
         if axe==None:
             axe=plt.subplot(111)
         elif not (isinstance(axe,(Axes, GridSpec))):
-            raise self.StaticObsError(
+            raise TypeError(
                 "axe < matplotlib.axes.Axes | matplotlib.gridspec.GridSpec >")
         return axe
     #------------------------------------------------------
@@ -459,9 +457,6 @@ class TimeWindowObs(object):
 
     """
 
-    class TimeWindowObsError(Exception):
-        pass
-
 
     #------------------------------------------------------
     #----| Init |------------------------------------------
@@ -470,14 +465,14 @@ class TimeWindowObs(object):
     def __init__(self, d_Obs):
         
         if not isinstance(d_Obs, dict):
-            raise self.TimeWindowObsError("d_Obs <dict {time:<StaticObs>}>")
+            raise TypeError("d_Obs <dict {time:<StaticObs>}>")
         for t in d_Obs.keys():
             if not (isinstance(t, (float,int)) 
                     and isinstance(d_Obs[t], StaticObs)):
-                raise self.TimeWindowObsError(
+                raise TypeError(
                         "d_Obs <dict {time <float>: <StaticObs>}>")
             if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
-                raise self.TimeWindowObsError("all obsOp must be the same")
+                raise ValueError("all obsOp must be the same")
 
         self.times=d_Obs.keys()
         self.times.sort()
@@ -497,30 +492,24 @@ class TimeWindowObs(object):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __propagatorValidate(self, propagator, tlm=False):
-        if not tlm:
-            if not isinstance(propagator, Launcher):
-                raise ValueError("propagator <Launcher>")
-        else:
-            if not isinstance(propagator, TLMLauncher)):
-                raise ValueError("propagator <TLMLauncher>")
-            if not tlm.isReferenced:
-                raise ValueError("TLM not referenced")
-
+    def __propagatorValidate(self, propagator):
+        if not isinstance(propagator, Launcher):
+            raise ValueError("propagator <Launcher>")
+        if isinstance(propagator, TLMLauncher):
+            if not propagator.isReferenced:
+                raise RuntimeError("TLM not referenced")
+                
     #------------------------------------------------------
 
-    def __integrate(self, x, propagator, t0=0., tlm=False):
-        self.__propagatorValidate(propagator, tlm=tlm)
+    def __integrate(self, x, propagator, t0=0.):
+        self.__propagatorValidate(propagator)
         d_xt={}
         x0=x
         for t in self.times:
             if t==t0:
                 d_xt[t]=x0
             else:
-                if not tlm:
-                    d_xt[t]=(propagator.integrate(x0,t-t0)).final    
-                else:   
-                    d_xt[t]=propagator.integrate(x0,t-t0)   
+                d_xt[t]=(propagator.integrate(x0,t-t0)).final    
             x0=d_xt[t]
             t0=t
         
@@ -538,15 +527,34 @@ class TimeWindowObs(object):
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
         return d_Hx
 
-    def modelEqTLM(self, x, propagator, t0=0.):
-        self.__propagatorValidate(propagator, tlm=True)
-        g=propagator.grid
-        d_Hx={}
-        # ici: tlm does not return traj...
-        d_xt=self.__integrate(x, propagator, t0=t0, tlm=True)
-        for t in self.times:
-            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
-        return d_Hx
+    def modelEquivalent_Adj(self, d_inno, x, NLProp, TLMProp, t0=0.):
+        #----| building reference trajectory |--------
+        tInt=np.max(self.times)-t0
+        traj_x=NLProp.integrate(x, tInt, t0=t0)
+        TLMProp.reference(traj_x)
+        #----| Adjoint retropropagation |-------------
+        i=0
+        MAdjObs=np.zeros(NLProp.grid.N)
+        for t in self.times[::-1]:
+            i+=1
+            if i<self.nTimes:
+                t_pre=self.times[-1-i]
+            else:
+                t_pre=t0
+
+            if self[t].obsOpTLMAdj==None:
+                w=d_inno[t]
+            else:   
+                w=self[t].obsOpTLMAdj(d_inno[t], 
+                                            NLProp.grid,
+                                            self[t].coord,
+                                            *self[t].obsOpArgs)
+
+            MAdjObs=TLMProp.adjoint(w+MAdjObs, 
+                                     tInt=t-t_pre,
+                                     t0=t_pre).ic
+            w=MAdjObs
+        return MAdjObs
         
 
     #------------------------------------------------------
@@ -589,7 +597,7 @@ class TimeWindowObs(object):
 
 
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
-            raise self.TimeWindowObsError("trajectory <None | Trajectory>")
+            raise TypeError("trajectory <None | Trajectory>")
         if self.nTimes < nbGraphLine:
             nSubRow=self.nTimes
         else:
