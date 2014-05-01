@@ -88,16 +88,18 @@ def obsOp_Coord(x, g, obsCoord):
         H[i, idxObs[i]]=1.
     return np.dot(H,x)
 
-def obsOp_Coord_Adj(obs, g, obsCoord):
+def obsOp_Coord_Adj(obsValues, g, obsCoord):
     """
     Trivial static observation operator adjoint
     """
+    if len(obsValues)<>len(obsCoord):
+        raise ValueError()
     idxObs=g.pos2Idx(obsCoord)
     nObs=len(idxObs)
     H=np.zeros(shape=(nObs,g.N))
     for i in xrange(nObs):
         H[i, idxObs[i]]=1.
-    return np.dot(H.T,obs)
+    return np.dot(H.T,obsValues)
 
 
 #=====================================================================
@@ -208,13 +210,14 @@ class StaticObs(object):
         else:
             return x
 
-    def modelEquivalent_Adj(self, obs, g):
+    def modelEquivalent_Adj(self, obsValues, g):
         if not isinstance(g, Grid):
             raise TypeError("g <Grid>")
         if self.obsOpTLMAdj<>None:
-            return self.obsOpTLMAdj(obs, g, self.coord, *self.obsOpArgs)
+            return self.obsOpTLMAdj(obsValues, g, self.coord, 
+                                    *self.obsOpArgs)
         else:
-            return obs
+            return obsValues
 
 
     #------------------------------------------------------
@@ -482,11 +485,14 @@ class TimeWindowObs(object):
         self.tMin=np.max(self.times)
         self.d_Obs=d_Obs
         self.nObs=0
+        self.values={}
         for t in self.times:
             self.nObs+=self.d_Obs[t].nObs
+            self.values[t]=self.d_Obs[t].values
         self.obsOp=d_Obs[self.times[0]].obsOp
         self.obsOpArgs=d_Obs[self.times[0]].obsOpArgs
 
+       
                 
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -517,6 +523,16 @@ class TimeWindowObs(object):
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
+    
+    def prosca(self, d_y1, d_y2):
+        if d_y1.keys()<>d_y2.keys():    
+            raise ValueError()
+        prosca=0.
+        for t in d_y1.keys():
+            prosca+=self[t].prosca(d_y1[t],d_y2[t])
+        return prosca
+    
+    #------------------------------------------------------
 
     def modelEquivalent(self, x, propagator, t0=0.):
         self.__propagatorValidate(propagator)
@@ -546,9 +562,9 @@ class TimeWindowObs(object):
                 w=d_inno[t]
             else:   
                 w=self[t].obsOpTLMAdj(d_inno[t], 
-                                            NLProp.grid,
-                                            self[t].coord,
-                                            *self[t].obsOpArgs)
+                                      NLProp.grid,
+                                      self[t].coord,
+                                      *self[t].obsOpArgs)
 
             MAdjObs=TLMProp.adjoint(w+MAdjObs, 
                                      tInt=t-t_pre,
@@ -680,83 +696,44 @@ def loadTWObs(fun):
 if __name__=="__main__":
     import matplotlib.pyplot as plt
     import pyKdV as kdv
-    from pseudoSpec1D import PeriodicGrid
     
     #----| Static obs |---------------------------    
-    Ntrc=100
-    L=300.
-    g=PeriodicGrid(Ntrc, L)
+    Ntrc=144
+    g=kdv.PeriodicGrid(Ntrc)
         
 
-    x0_truth_base=kdv.rndSpecVec(g, Ntrc=10,  amp=1.)
-    gaussWave=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    soliton=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
+    x0=kdv.rndSpecVec(g, Ntrc=10,  amp=1., seed=0)
+    x0+=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    x0+=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
 
-    x0_truth=x0_truth_base+gaussWave
-    x0_degrad=degrad(x0_truth, 0., 0.3)
 
-    obs1=StaticObs(g, x0_degrad, None)
+    obs1=StaticObs(g, x0, None)
 
     obs2Coord=np.array([-50., 0., 70.])
-    obs2=StaticObs(obs2Coord, x0_degrad[g.pos2Idx(obs2Coord)],
+    obs2=StaticObs(obs2Coord, x0[g.pos2Idx(obs2Coord)],
                     obsOp_Coord, obsOp_Coord_Adj)
 
-
-    plt.subplot(211)
-    plt.title("Static observations")
-    plt.plot(g.x, x0_degrad, 'r', linewidth=3)
-    plt.plot(g.x, x0_truth, 'k', linewidth=3)
-    plt.plot(obs1.interpolate(g), obs1.values, 'g')
-    plt.plot(obs1.interpolate(g), obs1.modelEquivalent(x0_truth, g), 'b')
-    plt.subplot(212)
-    plt.plot(g.x, x0_degrad, 'r')
-    plt.plot(g.x, x0_truth, 'k', linewidth=3)
-    plt.plot(obs2.interpolate(g), obs2.values, 'go')
-    plt.plot(obs2.interpolate(g), obs2.modelEquivalent(x0_truth, g), 'bo')
-
-    #----| time window obs |----------------------
-    kdvParam=kdv.Param(g, beta=1., gamma=-1.)
-    tInt=10.
     
-    model=kdv.kdvLauncher(kdvParam, maxA=5.)
-    x_truth=model.integrate(x0_truth, tInt)
-    x_degrad=model.integrate(x0_degrad, tInt)
 
-    nObsTime=3
-    d_Obs1={}
-    for i in xrange(nObsTime):
-        d_Obs1[tInt*(i+1)/nObsTime]=StaticObs(g,
-            x_degrad.whereTime(tInt*(i+1)/nObsTime), None)
-    timeObs1=TimeWindowObs(d_Obs1)
+    obs1.plotObs(g)
+    obs2.plotObs(g, marker=(3,0,33), markersize=20)
 
-    d_Obs2={}
-    for i in xrange(nObsTime):
-        t=tInt*(i+1)/nObsTime
-        captorPosition=-80.+20.*t
-        obsCoord=captorPosition+np.array([-10.,-5.,0.,5.,10.])
-        obsValues=x_degrad.whereTime(t)[g.pos2Idx(obsCoord)]
-        d_Obs2[t]=StaticObs(obsCoord,obsValues,
-                            obsOp_Coord, obsOp_Coord_Adj)
-    timeObs2=TimeWindowObs(d_Obs2)
+    #----| TimeWindow Obs |-----------------------    
+    tInt=50.
+    kdvParam=kdv.Param(g)
+    model=kdv.kdvLauncher(kdvParam, dt=0.01)
 
-
-    plt.figure()
-    i=0
-    for t in timeObs1.times:
-        i+=1
-        sub=plt.subplot(nObsTime, 1, i)
-        sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
-        sub.plot(g.x, x_degrad.whereTime(t), 'r', linewidth=2.5)
-        sub.plot(timeObs1[t].interpolate(g), timeObs1[t].values, 'g')
-        sub.set_title("t=%.2f"%t)
+    traj=model.integrate(x0, tInt)
+    
+    nObs=10
+    freqObs=2
+    d_Obs={}
+    for tObs in [i*tInt/freqObs for i in xrange(1,freqObs+1)]:
+        coords=rndSampling(g, nObs, seed=tObs)
+        d_Obs[tObs]=StaticObs(coords, 
+                              traj.whereTime(tObs)[g.pos2Idx(coords)],
+                              obsOp_Coord, obsOp_Coord_Adj)
+    twObs1=TimeWindowObs(d_Obs)
 
     plt.figure()
-    i=0
-    for t in timeObs2.times:
-        i+=1
-        sub=plt.subplot(nObsTime, 1, i)
-        sub.plot(g.x, x_truth.whereTime(t), 'k', linewidth=2.5)
-        sub.plot(g.x, x_degrad.whereTime(t), 'r')
-        sub.plot(timeObs2[t].interpolate(g), timeObs2[t].values, 'go')
-        sub.set_title("t=%.2f"%t)
-    plt.show()
+    twObs1.plotObs(g, trajectory=traj)

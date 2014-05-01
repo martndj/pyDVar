@@ -292,4 +292,44 @@ class TWObsJTerm(JTerm):
 #---------------------------------------------------------------------
 #=====================================================================
 
+if __name__=="__main__":
+    import matplotlib.pyplot as plt
+    import pyKdV as kdv
+    from observations import rndSampling,  obsOp_Coord, obsOp_Coord_Adj
+    
+    Ntrc=144
+    g=kdv.PeriodicGrid(Ntrc)
+    kdvParam=kdv.Param(g)
+    model=kdv.kdvLauncher(kdvParam, dt=0.01)
+    tlm=kdv.kdvTLMLauncher(kdvParam)
 
+    x0=kdv.rndSpecVec(g, Ntrc=10,  amp=1., seed=0)
+    x0+=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    
+    tInt=10.
+    traj=model.integrate(x0, tInt)
+    
+    nObs=10
+    freqObs=2
+    d_Obs={}
+    for tObs in [i*tInt/freqObs for i in xrange(1,freqObs+1)]:
+        coords=rndSampling(g, nObs, seed=tObs)
+        d_Obs[tObs]=StaticObs(coords, 
+                              traj.whereTime(tObs)[g.pos2Idx(coords)],
+                              obsOp_Coord, obsOp_Coord_Adj)
+    twObs1=TimeWindowObs(d_Obs)
+
+
+    #----| AD chain adjoint test |----------------
+
+    x=traj.ic
+    y=twObs1.values
+
+    tlm.reference(traj)
+    d_Hx=twObs1.modelEquivalent(x, tlm)
+    Ay=twObs1.modelEquivalent_Adj(y, x, model, tlm)
+    
+    # <y, Hx> - <H*y, x>
+    y_Hx=twObs1.prosca(y, d_Hx)
+    Ay_x=np.dot(twObs1.modelEquivalent_Adj(y, x, model, tlm), x)
+    print(y_Hx, Ay_x, y_Hx-Ay_x)
