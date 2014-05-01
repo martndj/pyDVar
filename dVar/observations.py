@@ -507,19 +507,42 @@ class TimeWindowObs(object):
                 
     #------------------------------------------------------
 
-    def __integrate(self, x, propagator, t0=0.):
+    def _integrate(self, x0, propagator, t0=0.):
         self.__propagatorValidate(propagator)
-        d_xt={}
-        x0=x
-        for t in self.times:
+        t_pre=t0
+        x=x0
+        d_x={}
+        for i in xrange(self.nTimes):
+            t=self.times[i]
             if t==t0:
-                d_xt[t]=x0
+                d_x[t]=x0
             else:
-                d_xt[t]=(propagator.integrate(x0,t-t0)).final    
-            x0=d_xt[t]
-            t0=t
-        
-        return d_xt
+                d_x[t]=propagator.integrate(x,t-t_pre, t0=t_pre).final    
+            t_pre=t
+            x=d_x[t]
+        return d_x
+    
+    #------------------------------------------------------
+
+    def _integrate_Adj(self, d_x, propAdj, t0=0.):
+        self.__propagatorValidate(propAdj)
+        x=propAdj.grid.zeros()
+        for i in xrange(self.nTimes-1, -1, -1):
+            t=self.times[i]
+            if i>0:
+                t_pre=self.times[i-1]
+            else:
+                t_pre=t0
+            
+            if t>t_pre:
+                x=x+propAdj.adjoint(d_x[t], t-t_pre, t0=t_pre).ic
+            else:
+                x=x+d_x[t]
+        return x
+                  
+                
+            
+
     #------------------------------------------------------
     #----| Public methods |--------------------------------
     #------------------------------------------------------
@@ -538,10 +561,12 @@ class TimeWindowObs(object):
         self.__propagatorValidate(propagator)
         g=propagator.grid
         d_Hx={}
-        d_xt=self.__integrate(x, propagator, t0=t0)
+        d_xt=self._integrate(x, propagator, t0=t0)
         for t in self.times:
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
         return d_Hx
+
+    #------------------------------------------------------
 
     def modelEquivalent_Adj(self, d_inno, x, NLProp, TLMProp, t0=0.):
         #----| building reference trajectory |--------
