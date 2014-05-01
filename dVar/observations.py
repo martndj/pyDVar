@@ -535,8 +535,10 @@ class TimeWindowObs(object):
                 t_pre=t0
             
             if t>t_pre:
+                print(i, t, t_pre)
                 x=x+propAdj.adjoint(d_x[t], t-t_pre, t0=t_pre).ic
             else:
+                print(i, t, t_pre, '*')
                 x=x+d_x[t]
         return x
                   

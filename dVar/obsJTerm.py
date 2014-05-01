@@ -322,12 +322,13 @@ if __name__=="__main__":
 
     #----| AD chain adjoint test |----------------
 
-    x=traj.ic
     tlm.reference(traj)
-    y=twObs1._integrate(kdv.rndSpecVec(g, seed=1), tlm)
+    x=kdv.rndSpecVec(g, amp=0.1, seed=1)
+    y=twObs1._integrate(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
 
-    Lx=twObs1._integrate(x0, tlm)
+    Lx=twObs1._integrate(x, tlm)
     Ay=twObs1._integrate_Adj(y, tlm)
+    xTLM=tlm.integrate(x, tInt)
     y_Lx=0.
     for t in y.keys():
         y_Lx+=np.dot(y[t], Lx[t])
