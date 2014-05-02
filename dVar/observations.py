@@ -477,7 +477,7 @@ class TimeWindowObs(object):
             if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
                 raise ValueError("all obsOp must be the same")
 
-        self.times=d_Obs.keys()
+        self.times=np.array(d_Obs.keys())
         self.times.sort()
 
         self.nTimes=len(self.times)
@@ -498,50 +498,17 @@ class TimeWindowObs(object):
     #----| Private methods |-------------------------------
     #------------------------------------------------------
 
-    def __propagatorValidate(self, propagator):
-        if not isinstance(propagator, Launcher):
-            raise ValueError("propagator <Launcher>")
-        if isinstance(propagator, TLMLauncher):
-            if not propagator.isReferenced:
-                raise RuntimeError("TLM not referenced")
-                
-    #------------------------------------------------------
-
-    def _integrate(self, x0, propagator, t0=0.):
-        self.__propagatorValidate(propagator)
-        t_pre=t0
-        x=x0
-        d_x={}
-        for i in xrange(self.nTimes):
-            t=self.times[i]
-            if t==t0:
-                d_x[t]=x0
-            else:
-                d_x[t]=propagator.integrate(x,t-t_pre, t0=t_pre).final    
-            t_pre=t
-            x=d_x[t]
-        return d_x
-    
-    #------------------------------------------------------
-
-    def _integrate_Adj(self, d_x, propAdj, t0=0.):
-        self.__propagatorValidate(propAdj)
-        x=propAdj.grid.zeros()
-        for i in xrange(self.nTimes-1, -1, -1):
-            t=self.times[i]
-            if i>0:
-                t_pre=self.times[i-1]
-            else:
-                t_pre=t0
-            
-            if t>t_pre:
-                print(i, t, t_pre)
-                x=x+propAdj.adjoint(d_x[t], t-t_pre, t0=t_pre).ic
-            else:
-                print(i, t, t_pre, '*')
-                x=x+d_x[t]
-        return x
-                  
+    def __propagatorValidate(self, propagator, 
+                             tlm=False, checkReference=True):
+        if not tlm:
+            if not isinstance(propagator, Launcher):
+                raise ValueError("propagator <Launcher>")
+        else:
+            if not isinstance(propagator, TLMLauncher):
+                raise ValueError("propagator <TLMLauncher>")
+            if checkReference:
+                if not propagator.isReferenced:
+                    raise RuntimeError("TLM not referenced")
                 
             
 
@@ -559,49 +526,57 @@ class TimeWindowObs(object):
     
     #------------------------------------------------------
 
-    def modelEquivalent(self, x, propagator, t0=0.):
-        self.__propagatorValidate(propagator)
-        g=propagator.grid
+    def modelEquivalentNL(self, x, nlModel, t0=0.):
+        self.__propagatorValidate(nlModel)
+        g=nlModel.grid
+        traj=nlModel.integrate(x, self.times.max(), t0=t0)
+        
         d_Hx={}
-        d_xt=self._integrate(x, propagator, t0=t0)
         for t in self.times:
-            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(
+                        traj.whereTime(t), g)
+
         return d_Hx
 
     #------------------------------------------------------
 
-    def modelEquivalent_Adj(self, d_inno, x, NLProp, TLMProp, t0=0.):
+    def modelEquivalentTLM(self, x, tlm, t0=0.):
+        self.__propagatorValidate(tlm, tlm=True)
+        g=tlm.grid
+
+        d_xt=tlm.d_intTimes(x, self.times, t0=t0)
+        
+        d_Hx={}
+        for t in self.times:
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
+
+        return d_Hx
+
+        
+    def modelEquivalent_Adj(self, d_inno, x, nlModel, tlm, t0=0.):
+        self.__propagatorValidate(nlModel)
+        self.__propagatorValidate(tlm, tlm=True, checkReference=False)
+        if nlModel.grid<>tlm.grid:
+            raise ValueError()
         #----| building reference trajectory |--------
         tInt=np.max(self.times)-t0
-        traj_x=NLProp.integrate(x, tInt, t0=t0)
-        TLMProp.reference(traj_x)
+        traj_x=nlModel.integrate(x, tInt, t0=t0)
+        tlm.reference(traj_x)
         #----| Adjoint retropropagation |-------------
-        i=0
-        MAdjObs=np.zeros(NLProp.grid.N)
-        for t in self.times[::-1]:
-            i+=1
-            if i<self.nTimes:
-                t_pre=self.times[-1-i]
-            else:
-                t_pre=t0
+        d_w={}
+        for t in d_inno.keys():
+            d_w[t]=self[t].obsOpTLMAdj(d_inno[t], 
+                                       nlModel.grid,
+                                       self[t].coord,
+                                       *self[t].obsOpArgs)
+        adj=d_intTimesAdj(d_w, t0=t0)
 
-            if self[t].obsOpTLMAdj==None:
-                w=d_inno[t]
-            else:   
-                w=self[t].obsOpTLMAdj(d_inno[t], 
-                                      NLProp.grid,
-                                      self[t].coord,
-                                      *self[t].obsOpArgs)
-
-            MAdjObs=TLMProp.adjoint(w+MAdjObs, 
-                                     tInt=t-t_pre,
-                                     t0=t_pre).ic
-            w=MAdjObs
-        return MAdjObs
+        return adj
         
 
     #------------------------------------------------------
     
+    # HERE!
     def innovation(self, x, propagator, t0=0.):
         self.__propagatorValidate(propagator)
         d_inno={}
