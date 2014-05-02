@@ -526,7 +526,7 @@ class TimeWindowObs(object):
     
     #------------------------------------------------------
 
-    def modelEquivalentNL(self, x, nlModel, t0=0.):
+    def modelEquivalent(self, x, nlModel, t0=0.):
         self.__propagatorValidate(nlModel)
         g=nlModel.grid
         traj=nlModel.integrate(x, self.times.max(), t0=t0)
@@ -553,34 +553,25 @@ class TimeWindowObs(object):
         return d_Hx
 
         
-    def modelEquivalent_Adj(self, d_inno, x, nlModel, tlm, t0=0.):
-        self.__propagatorValidate(nlModel)
-        self.__propagatorValidate(tlm, tlm=True, checkReference=False)
-        if nlModel.grid<>tlm.grid:
-            raise ValueError()
-        #----| building reference trajectory |--------
-        tInt=np.max(self.times)-t0
-        traj_x=nlModel.integrate(x, tInt, t0=t0)
-        tlm.reference(traj_x)
-        #----| Adjoint retropropagation |-------------
+    def modelEquivalent_Adj(self, d_inno, tlm, t0=0.):
+        self.__propagatorValidate(tlm, tlm=True)
+        g=tlm.grid
+
         d_w={}
         for t in d_inno.keys():
-            d_w[t]=self[t].obsOpTLMAdj(d_inno[t], 
-                                       nlModel.grid,
-                                       self[t].coord,
-                                       *self[t].obsOpArgs)
-        adj=d_intTimesAdj(d_w, t0=t0)
+            d_w[t]=self[t].obsOpTLMAdj(d_inno[t], g, self[t].coord,
+                                        *self[t].obsOpArgs)
+        adj=tlm.d_intTimesAdj(d_w, t0=t0)
 
         return adj
         
 
     #------------------------------------------------------
     
-    # HERE!
-    def innovation(self, x, propagator, t0=0.):
-        self.__propagatorValidate(propagator)
+    def innovation(self, x, nlModel, t0=0.):
+        self.__propagatorValidate(nlModel)
         d_inno={}
-        d_Hx=self.modelEquivalent(x, propagator, t0=t0)
+        d_Hx=self.modelEquivalent(x, nlModel, t0=t0)
         for t in self.times:
             d_inno[t]=self.d_Obs[t].values-d_Hx[t]
         return d_inno

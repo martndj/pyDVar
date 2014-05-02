@@ -322,24 +322,18 @@ if __name__=="__main__":
 
     #----| AD chain adjoint test |----------------
 
+    # <y, Hx> - <H*y, x>
     tlm.reference(traj)
     x=kdv.rndSpecVec(g, amp=0.1, seed=1)
-    y=twObs1._integrate(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
+    y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
 
-    Lx=twObs1._integrate(x, tlm)
-    Ay=twObs1._integrate_Adj(y, tlm)
-    xTLM=tlm.integrate(x, tInt)
-    y_Lx=0.
+    Hx=twObs1.modelEquivalentTLM(x, tlm)
+    Ay=twObs1.modelEquivalent_Adj(y, tlm)
+    
+    y_Hx=0.
     for t in y.keys():
-        y_Lx+=np.dot(y[t], Lx[t])
+        y_Hx+=np.dot(y[t], Hx[t])
     Ay_x=np.dot(Ay, x)
-    print(y_Lx-Ay_x)
+    print("<y, Hx> - <H*y, x>=%e"%(y_Hx-Ay_x))
 
-    # <y, Hx> - <H*y, x>
-    #y=twObs1.values
-    #tlm.reference(traj)
-    #d_Hx=twObs1.modelEquivalent(x, tlm)
-    #Ay=twObs1.modelEquivalent_Adj(y, x, model, tlm)
-    #y_Hx=twObs1.prosca(y, d_Hx)
-    #Ay_x=np.dot(Ay, x)
-    #print(y_Hx, Ay_x, y_Hx-Ay_x)
+    
