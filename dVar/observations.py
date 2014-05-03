@@ -410,7 +410,7 @@ class StaticObs(object):
         if not isinstance(statObs, StaticObs): raise TypeError()
         
         if obsOpEq:
-            if (self.obsOp<>statObs.obsOp or
+            if (selobsJTerm.pyf.obsOp<>statObs.obsOp or
                 self.obsOpTLMAdj<>statObs.obsOpTLMAdj or
                 self.obsOpArgs<>statObs.obsOpArgs):
                 raise ValueError()
@@ -529,12 +529,14 @@ class TimeWindowObs(object):
     def modelEquivalent(self, x, nlModel, t0=0.):
         self.__propagatorValidate(nlModel)
         g=nlModel.grid
-        traj=nlModel.integrate(x, self.times.max(), t0=t0)
+
+        #traj=nlModel.integrate(x, self.times.max())
+        d_xt=nlModel.d_intTimes(x, self.times, t0=t0)
         
         d_Hx={}
         for t in self.times:
-            d_Hx[t]=self.d_Obs[t].modelEquivalent(
-                        traj.whereTime(t), g)
+            #d_Hx[t]=self.d_Obs[t].modelEquivalent(traj.whereTime(t), g)
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
 
         return d_Hx
 

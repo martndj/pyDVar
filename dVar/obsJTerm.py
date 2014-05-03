@@ -258,20 +258,15 @@ class TWObsJTerm(JTerm):
             
     #------------------------------------------------------
 
-    def _costFunc(self, x, normalize=False): 
+    def _costFunc(self, x): 
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
-        Jo=0.
-        for t in self.obs.times:
-            Jo+=0.5*np.dot(d_inno[t],np.dot(self.obs[t].metric,d_inno[t]))
-        if normalize:
-            return (1./self.nObs)*Jo
-        else:
-            return Jo
+        Jo=0.5*self.obs.prosca(d_inno, d_inno)
+        return Jo
 
     #------------------------------------------------------
 
-    def _gradCostFunc(self, x, normalize=False):
+    def _gradCostFunc(self, x):
         self.__xValidate(x)
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
@@ -280,11 +275,6 @@ class TWObsJTerm(JTerm):
         
         grad=-self.obs.modelEquivalent_Adj(d_NormInno, self.tlm, 
                                             t0=self.tWin[0])
-        if normalize:
-            grad= (1./self.nObs)*grad
-        else:
-            pass
-        
         return grad
 
 
@@ -297,8 +287,9 @@ if __name__=="__main__":
     import pyKdV as kdv
     from observations import rndSampling,  obsOp_Coord, obsOp_Coord_Adj
 
-    testADChain=True
-    testGradJ=False
+    testOpHAdj=False
+    testOpHGrad=False
+    testGradJ=True
     
     Ntrc=144
     g=kdv.PeriodicGrid(Ntrc)
@@ -308,9 +299,11 @@ if __name__=="__main__":
 
     x0=kdv.rndSpecVec(g, Ntrc=10,  amp=1., seed=0)
     x0+=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    pert=kdv.rndSpecVec(g, Ntrc=10,  amp=.1, seed=1)
+    xt=x0+pert
     
     tInt=10.
-    traj=model.integrate(x0, tInt)
+    traj=model.integrate(xt, tInt)
     tlm.reference(traj)
     
     nObs=10
@@ -323,66 +316,48 @@ if __name__=="__main__":
                               obsOp_Coord, obsOp_Coord_Adj)
     twObs1=TimeWindowObs(d_Obs)
 
-    if testADChain:
+    if testOpHAdj:
         #----| AD chain adjoint test |----------------
         print("\nTesting AD Chain adjoint") 
         # <y, Hx> - <H*y, x>
-#        print("  1: x -( H )-> Hx ")
-#        x=kdv.rndSpecVec(g, amp=0.1, seed=1)
-#        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
-#    
-#        Hx=twObs1.modelEquivalentTLM(x, tlm)
-#        Ay=twObs1.modelEquivalent_Adj(y, tlm)
-#        
-#        y_Hx=0.
-#        for t in y.keys():
-#            y_Hx+=np.dot(y[t], Hx[t])
-#        Ay_x=np.dot(Ay, x)
-#        print("    <y, Hx> - <H*y, x>=%e\n"%(y_Hx-Ay_x))
+        print("  1: x -( H )-> Hx ")
+        x=kdv.rndSpecVec(g, amp=0.1, seed=1)
+        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
     
-
-        print("  2: x -( N )-> R^{-1}.(obs-x)")
-        x=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.3, seed=3), tlm)
-        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.3, seed=4), tlm)
-
-        Nx={}
-        for t in w.keys():
-            Nx[t]=twObs1.values[t]-x[t]
-            Nx[t]=np.dot(twObs1[t].metric,Nx[t])
-        y_Nx=twObs1.prosca(y, Nx)
+        Hx=twObs1.modelEquivalentTLM(x, tlm)
+        Ay=twObs1.modelEquivalent_Adj(y, tlm)
         
-        Ay={}
+        y_Hx=0.
         for t in y.keys():
-            Ay[t]=np.dot(twObs1[t].metric.T, y[t])
-            Ay[t]=twObs1.values[t]-Ay[t]
-        
-        Ay_x=twObs1.prosca(Ay,x)
-        print("    <y, Nx> - <N*y, x>=%e\n"%(y_Nx-Ay_x))
-       
+            y_Hx+=np.dot(y[t], Hx[t])
+        Ay_x=np.dot(Ay, x)
+        print("    <y, Hx> - <H*y, x>=%e\n"%(y_Hx-Ay_x))
     
-#        print("  3: x -( NH )-> R^{-1}.(obs-Hx)")
-#        x=kdv.rndSpecVec(g, amp=0.1, seed=1)
-#        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.3, seed=4), tlm)
-#
-#        d_inno=twObs1.innovation(x, model)
-#        Nx={}
-#        for t in d_inno.keys():
-#            Nx[t]=np.dot(twObs1[t].metric,d_inno[t])
-#        y_Nx=0.
-#        for t in y.keys():
-#            y_Nx+=np.dot(y[t], Nx[t])
-#        
-#    
-#        w={}
-#        for t in y.keys():
-#            w[t]=np.dot(twObs1[t].metric.T, y[t])
-#            w[t]=twObs1.values[t]-w[t]
-#        Ay=twObs1.modelEquivalent_Adj(w, tlm)
-#        Ay_x=np.dot(Ay,x)
-#    
-#        print("    <y, Nx> - <N*y, x>=%e\n"%(y_Nx-Ay_x))
+    if testOpHGrad:
+        powRange=[-1,-14]
+        x=kdv.rndSpecVec(g, amp=1., seed=1)
+        NLx=twObs1.modelEquivalent(x, model)
+        J1=0.
+        for t in NLx.keys():
+            J1+=0.5*np.dot(NLx[t], NLx[t])
+
+        gradJ1=twObs1.modelEquivalent_Adj(NLx, tlm)
+        n2GradJ1=np.dot(gradJ1,gradJ1)
+
+        test={}
+        for power in xrange(powRange[0],powRange[1], -1):
+            eps=10.**(power)
+            NLx_eps=twObs1.modelEquivalent(x-eps*gradJ1, model)
+            
+            Jeps=0.
+            for t in NLx_eps.keys():
+                Jeps+=0.5*np.dot(NLx_eps[t], NLx_eps[t]) 
+            res=((J1-Jeps)/(eps*n2GradJ1))
+            test[power]=[Jeps, res]
+            print(test[power])
+
 
     if testGradJ:
-        J=TWObsJTerm(twObs1, model, tlm)
+        J2=TWObsJTerm(twObs1, model, tlm)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
-        J.gradTest(x)
+        J2.gradTest(x)
