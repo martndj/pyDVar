@@ -287,9 +287,10 @@ if __name__=="__main__":
     import pyKdV as kdv
     from observations import rndSampling,  obsOp_Coord, obsOp_Coord_Adj
 
-    testOpHAdj=False
-    testOpHGrad=False
-    testGradJ=True
+    testGradJStatObs=False
+    testOpHAdj=True
+    testOpHGrad=True
+    testGradJTWObs=False
     
     Ntrc=144
     g=kdv.PeriodicGrid(Ntrc)
@@ -316,6 +317,12 @@ if __name__=="__main__":
                               obsOp_Coord, obsOp_Coord_Adj)
     twObs1=TimeWindowObs(d_Obs)
 
+    if testGradJStatObs:
+        obs=twObs1[tInt]
+        J2=StaticObsJTerm(obs, g)
+        x=kdv.rndSpecVec(g, amp=1., seed=1)
+        J2.gradTest(x)
+
     if testOpHAdj:
         #----| AD chain adjoint test |----------------
         print("\nTesting AD Chain adjoint") 
@@ -336,28 +343,29 @@ if __name__=="__main__":
     if testOpHGrad:
         powRange=[-1,-14]
         x=kdv.rndSpecVec(g, amp=1., seed=1)
-        NLx=twObs1.modelEquivalent(x, model)
-        J1=0.
-        for t in NLx.keys():
-            J1+=0.5*np.dot(NLx[t], NLx[t])
+        #Hx=twObs1.modelEquivalent(x, model)
+        Hx=twObs1.modelEquivalentTLM(x, tlm)
+        J1=0.5*twObs1.squareNorm(Hx)
 
-        gradJ1=twObs1.modelEquivalent_Adj(NLx, tlm)
+        RHx={}
+        for t in Hx.keys():
+            RHx[t]=np.dot(twObs1[t].metric, Hx[t])
+        gradJ1=twObs1.modelEquivalent_Adj(RHx, tlm)
         n2GradJ1=np.dot(gradJ1,gradJ1)
 
         test={}
         for power in xrange(powRange[0],powRange[1], -1):
             eps=10.**(power)
-            NLx_eps=twObs1.modelEquivalent(x-eps*gradJ1, model)
+            #Hx_eps=twObs1.modelEquivalent(x-eps*gradJ1, model)
+            Hx_eps=twObs1.modelEquivalentTLM(x-eps*gradJ1, tlm)
             
-            Jeps=0.
-            for t in NLx_eps.keys():
-                Jeps+=0.5*np.dot(NLx_eps[t], NLx_eps[t]) 
+            Jeps=0.5*twObs1.squareNorm(Hx_eps)
             res=((J1-Jeps)/(eps*n2GradJ1))
             test[power]=[Jeps, res]
             print(test[power])
 
 
-    if testGradJ:
-        J2=TWObsJTerm(twObs1, model, tlm)
+    if testGradJTWObs:
+        J3=TWObsJTerm(twObs1, model, tlm)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
-        J2.gradTest(x)
+        J3.gradTest(x)

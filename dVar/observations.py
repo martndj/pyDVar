@@ -523,7 +523,17 @@ class TimeWindowObs(object):
         for t in d_y1.keys():
             prosca+=self[t].prosca(d_y1[t],d_y2[t])
         return prosca
+   
+    #------------------------------------------------------
     
+    def squareNorm(self, d_y):
+        return self.prosca(d_y, d_y)
+    
+    #------------------------------------------------------
+    
+    def norm(self, d_y):
+        return np.sqrt(self.prosca(d_y))
+
     #------------------------------------------------------
 
     def modelEquivalent(self, x, nlModel, t0=0.):
