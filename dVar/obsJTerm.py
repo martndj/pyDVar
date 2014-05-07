@@ -345,14 +345,14 @@ if __name__=="__main__":
         x=kdv.rndSpecVec(g, amp=1., seed=1)
 
         def fct(x):
-            #Hx=twObs1.modelEquivalent(x, model)
-            Hx=twObs1.modelEquivalentTLM(x, tlm)
+            Hx=twObs1.modelEquivalent(x, model)
+            #Hx=twObs1.modelEquivalentTLM(x, tlm)
             J=0.5*twObs1.squareNorm(Hx)
             return J
 
         def gradFct(x):
-            #Hx=twObs1.modelEquivalent(x, model)
-            Hx=twObs1.modelEquivalentTLM(x, tlm)
+            Hx=twObs1.modelEquivalent(x, model)
+            #Hx=twObs1.modelEquivalentTLM(x, tlm)
             RHx={}
             for t in Hx.keys():
                 RHx[t]=np.dot(twObs1[t].metric, Hx[t])
