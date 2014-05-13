@@ -259,6 +259,7 @@ class TWObsJTerm(JTerm):
 
     def _gradCostFunc(self, x):
         self.__xValidate(x)
+        self.tlm.reference(self.nlModel.integrate(x, self.obs.times[-1]))
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
         for t in d_inno.keys():
@@ -282,8 +283,8 @@ if __name__=="__main__":
 
     testGradJStatObs=False
     testOpHAdj=False
-    testOpHGrad=True
-    testGradJTWObs=False
+    testOpHGrad=False
+    testGradJTWObs=True
     
     Ntrc=144
     tInt=5.
@@ -344,22 +345,23 @@ if __name__=="__main__":
     if testOpHGrad:
         x=kdv.rndSpecVec(g, amp=1., seed=1)
 
-        def fct(x):
-            Hx=twObs1.modelEquivalent(x, model)
-            #Hx=twObs1.modelEquivalentTLM(x, tlm)
-            J=0.5*twObs1.squareNorm(Hx)
+        def fct(x, twObs, model, tlm):
+            Hx=twObs.modelEquivalent(x, model)
+            #Hx=twObs.modelEquivalentTLM(x, tlm)
+            J=0.5*twObs.squareNorm(Hx)
             return J
 
-        def gradFct(x):
-            Hx=twObs1.modelEquivalent(x, model)
-            #Hx=twObs1.modelEquivalentTLM(x, tlm)
+        def gradFct(x, twObs, model, tlm):
+            Hx=twObs.modelEquivalent(x, model)
+            #Hx=twObs.modelEquivalentTLM(x, tlm)
+            tlm.reference(model.integrate(x, twObs.times[-1]))
             RHx={}
             for t in Hx.keys():
-                RHx[t]=np.dot(twObs1[t].metric, Hx[t])
-            gradJ= twObs1.modelEquivalent_Adj(RHx, tlm)
+                RHx[t]=np.dot(twObs[t].metric, Hx[t])
+            gradJ= twObs.modelEquivalent_Adj(RHx, tlm)
             return gradJ
 
-        kdv.gradientTest(x, fct, gradFct)
+        kdv.gradientTest(x, fct, gradFct, args=(twObs1, model, tlm))
 
     if testGradJTWObs:
         J3=TWObsJTerm(twObs1, model, tlm)
