@@ -259,7 +259,10 @@ class TWObsJTerm(JTerm):
 
     def _gradCostFunc(self, x):
         self.__xValidate(x)
-        self.tlm.reference(self.nlModel.integrate(x, self.obs.times[-1]))
+        self.tlm.reference(self.nlModel.integrate(
+                                x, 
+                                self.obs.times[-1]-self.tWin[0],
+                                t0=self.tWin[0]))
         d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
         d_NormInno={}
         for t in d_inno.keys():
@@ -285,10 +288,12 @@ if __name__=="__main__":
     testGradJTWObs=True
     
     Ntrc=144
-    tInt=5.
+    tTotal=5.
+    t0=3.
+    tInt=tTotal-t0
     dt=0.01
     nObs=10
-    freqObs=2
+    freqObs=3
 
 
     g=kdv.PeriodicGrid(Ntrc)
@@ -306,11 +311,11 @@ if __name__=="__main__":
     pert=kdv.rndSpecVec(g, Ntrc=10,  amp=.1, seed=1)
     xt=x0+pert
     
-    traj=model.integrate(xt, tInt)
+    traj=model.integrate(xt, tTotal)
     #tlm.reference(traj)
     
     d_Obs={}
-    for tObs in [i*tInt/freqObs for i in xrange(1,freqObs+1)]:
+    for tObs in [i*tTotal/freqObs for i in xrange(1,freqObs+1)]:
         coords=rndSampling(g, nObs, seed=tObs)
         d_Obs[tObs]=StaticObs(coords, 
                               traj.whereTime(tObs)[g.pos2Idx(coords)],
@@ -319,7 +324,7 @@ if __name__=="__main__":
 
     if testGradJStatObs:
         print("\nStaticObsJTerm gradient test") 
-        obs=twObs1[tInt]
+        obs=twObs1[tTotal]
         J2=StaticObsJTerm(obs, g)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
         J2.gradTest(x)
@@ -327,6 +332,6 @@ if __name__=="__main__":
 
     if testGradJTWObs:
         print("\nTWObsJTerm gradient test") 
-        J3=TWObsJTerm(twObs1, model, tlm)
+        J3=TWObsJTerm(twObs1, model, tlm, t0=t0)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
         J3.gradTest(x0)
