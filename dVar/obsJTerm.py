@@ -281,16 +281,14 @@ if __name__=="__main__":
 
     dummyModel=False
 
-    testGradJStatObs=False
-    testOpHAdj=False
-    testOpHGrad=False
+    testGradJStatObs=True
     testGradJTWObs=True
     
     Ntrc=144
     tInt=5.
     dt=0.01
     nObs=10
-    freqObs=1
+    freqObs=2
 
 
     g=kdv.PeriodicGrid(Ntrc)
@@ -309,7 +307,7 @@ if __name__=="__main__":
     xt=x0+pert
     
     traj=model.integrate(xt, tInt)
-    tlm.reference(traj)
+    #tlm.reference(traj)
     
     d_Obs={}
     for tObs in [i*tInt/freqObs for i in xrange(1,freqObs+1)]:
@@ -320,50 +318,15 @@ if __name__=="__main__":
     twObs1=TimeWindowObs(d_Obs)
 
     if testGradJStatObs:
+        print("\nStaticObsJTerm gradient test") 
         obs=twObs1[tInt]
         J2=StaticObsJTerm(obs, g)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
         J2.gradTest(x)
 
-    if testOpHAdj:
-        #----| AD chain adjoint test |----------------
-        print("\nTesting AD Chain adjoint") 
-        # <y, Hx> - <H*y, x>
-        print("  1: x -( H )-> Hx ")
-        x=kdv.rndSpecVec(g, amp=0.1, seed=1)
-        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
-    
-        Hx=twObs1.modelEquivalentTLM(x, tlm)
-        Ay=twObs1.modelEquivalent_Adj(y, tlm)
-        
-        y_Hx=0.
-        for t in y.keys():
-            y_Hx+=np.dot(y[t], Hx[t])
-        Ay_x=np.dot(Ay, x)
-        print("    <y, Hx> - <H*y, x>=%e\n"%(y_Hx-Ay_x))
-    
-    if testOpHGrad:
-        x=kdv.rndSpecVec(g, amp=1., seed=1)
-
-        def fct(x, twObs, model, tlm):
-            Hx=twObs.modelEquivalent(x, model)
-            #Hx=twObs.modelEquivalentTLM(x, tlm)
-            J=0.5*twObs.squareNorm(Hx)
-            return J
-
-        def gradFct(x, twObs, model, tlm):
-            Hx=twObs.modelEquivalent(x, model)
-            #Hx=twObs.modelEquivalentTLM(x, tlm)
-            tlm.reference(model.integrate(x, twObs.times[-1]))
-            RHx={}
-            for t in Hx.keys():
-                RHx[t]=np.dot(twObs[t].metric, Hx[t])
-            gradJ= twObs.modelEquivalent_Adj(RHx, tlm)
-            return gradJ
-
-        kdv.gradientTest(x, fct, gradFct, args=(twObs1, model, tlm))
 
     if testGradJTWObs:
+        print("\nTWObsJTerm gradient test") 
         J3=TWObsJTerm(twObs1, model, tlm)
         x=kdv.rndSpecVec(g, amp=1., seed=1)
-        J3.gradTest(x)
+        J3.gradTest(x0)

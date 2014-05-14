@@ -511,6 +511,13 @@ class TimeWindowObs(object):
                     raise RuntimeError("TLM not referenced")
                 
             
+    #------------------------------------------------------
+
+    def __times2NDt(self, dt):
+        nDtList=[]
+        for t in self.times:
+            nDtList.append(int(t/dt))
+        return nDtList
 
     #------------------------------------------------------
     #----| Public methods |--------------------------------
@@ -538,15 +545,16 @@ class TimeWindowObs(object):
 
     def modelEquivalent(self, x, nlModel, t0=0.):
         self.__propagatorValidate(nlModel)
+        nDtList=self.__times2NDt(nlModel.dt)
         g=nlModel.grid
 
-        #traj=nlModel.integrate(x, self.times.max())
-        d_xt=nlModel.d_intTimes(x, self.times, t0=t0)
+        d_x=nlModel.d_nDtInt(x, nDtList, t0=t0)
         
         d_Hx={}
-        for t in self.times:
-            #d_Hx[t]=self.d_Obs[t].modelEquivalent(traj.whereTime(t), g)
-            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
+        for n in xrange(len(nDtList)):
+            i=nDtList[n]
+            t=self.times[n]
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_x[i], g)
 
         return d_Hx
 
@@ -554,26 +562,32 @@ class TimeWindowObs(object):
 
     def modelEquivalentTLM(self, x, tlm, t0=0.):
         self.__propagatorValidate(tlm, tlm=True)
+        nDtList=self.__times2NDt(tlm.dt)
         g=tlm.grid
 
-        d_xt=tlm.d_intTimes(x, self.times, t0=t0)
+        d_x=tlm.d_nDtInt(x, nDtList, t0=t0)
         
         d_Hx={}
-        for t in self.times:
-            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_xt[t], g)
+        for n in xrange(len(nDtList)):
+            i=nDtList[n]
+            t=self.times[n]
+            d_Hx[t]=self.d_Obs[t].modelEquivalent(d_x[i], g)
 
         return d_Hx
 
         
     def modelEquivalent_Adj(self, d_inno, tlm, t0=0.):
         self.__propagatorValidate(tlm, tlm=True)
+        nDtList=self.__times2NDt(tlm.dt)
         g=tlm.grid
 
-        d_w={}
-        for t in d_inno.keys():
-            d_w[t]=self[t].obsOpTLMAdj(d_inno[t], g, self[t].coord,
-                                        *self[t].obsOpArgs)
-        adj=tlm.d_intTimesAdj(d_w, t0=t0)
+        d_w={} 
+        for n in xrange(len(nDtList)):
+            i=nDtList[n]
+            t=self.times[n]
+            d_w[i]=self.d_Obs[t].modelEquivalent_Adj(d_inno[t], g)
+
+        adj=tlm.d_nDtIntAdj(d_w, t0=t0)
 
         return adj
         
@@ -702,43 +716,87 @@ if __name__=="__main__":
     import matplotlib.pyplot as plt
     import pyKdV as kdv
     
+    plotObs=False
     #----| Static obs |---------------------------    
     Ntrc=144
     g=kdv.PeriodicGrid(Ntrc)
         
 
-    x0=kdv.rndSpecVec(g, Ntrc=10,  amp=1., seed=0)
-    x0+=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
-    x0+=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
+    u0=kdv.rndSpecVec(g, Ntrc=10,  amp=1., seed=0)
+    u0+=1.5*kdv.gauss(g.x, 40., 20. )-1.*kdv.gauss(g.x, -20., 14. )
+    u0+=kdv.soliton(g.x, 0., amp=5., beta=1., gamma=-1)
 
 
-    obs1=StaticObs(g, x0, None)
+    obs1=StaticObs(g, u0, None)
 
     obs2Coord=np.array([-50., 0., 70.])
-    obs2=StaticObs(obs2Coord, x0[g.pos2Idx(obs2Coord)],
+    obs2=StaticObs(obs2Coord, u0[g.pos2Idx(obs2Coord)],
                     obsOp_Coord, obsOp_Coord_Adj)
 
-    
-
-    obs1.plotObs(g)
-    obs2.plotObs(g, marker=(3,0,33), markersize=20)
+    if plotObs:
+        obs1.plotObs(g)
+        obs2.plotObs(g, marker=(3,0,33), markersize=20)
 
     #----| TimeWindow Obs |-----------------------    
-    tInt=50.
+    testOpHAdj=True
+    testOpHGrad=True
+    tInt=10.
     kdvParam=kdv.Param(g)
     model=kdv.kdvLauncher(kdvParam, dt=0.01)
 
-    traj=model.integrate(x0, tInt)
+    u=model.integrate(u0, tInt)
     
     nObs=10
-    freqObs=2
+    freqObs=3
     d_Obs={}
-    for tObs in [i*tInt/freqObs for i in xrange(1,freqObs+1)]:
+    timesObs=[i*tInt/freqObs for i in xrange(1,freqObs+1)]
+    for tObs in timesObs:
         coords=rndSampling(g, nObs, seed=tObs)
         d_Obs[tObs]=StaticObs(coords, 
-                              traj.whereTime(tObs)[g.pos2Idx(coords)],
+                              u.whereTime(tObs)[g.pos2Idx(coords)],
                               obsOp_Coord, obsOp_Coord_Adj)
     twObs1=TimeWindowObs(d_Obs)
 
-    plt.figure()
-    twObs1.plotObs(g, trajectory=traj)
+    if plotObs:
+        plt.figure()
+        twObs1.plotObs(g, trajectory=u)
+    
+    if testOpHAdj:
+        #----| AD chain adjoint test |----------------
+        print("\nTesting TimeWindowObs.modelEquivalent() adjoint") 
+        # <y, Hx> - <H*y, x>
+        tlm=kdv.kdvTLMLauncher(kdvParam)
+        tlm.reference(u)
+
+        x=kdv.rndSpecVec(g, amp=0.1, seed=1)
+        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
+
+        print("  1: x -( H )-> Hx ")
+        Hx=twObs1.modelEquivalentTLM(x, tlm)
+        print("  2: y -( H*)-> H*y ")
+        Ay=twObs1.modelEquivalent_Adj(y, tlm)
+        
+        y_Hx=0.
+        for t in y.keys():
+            y_Hx+=np.dot(y[t], Hx[t])
+        Ay_x=np.dot(Ay, x)
+        print("    <y, Hx> - <H*y, x>=%e\n"%(y_Hx-Ay_x))
+    
+    if testOpHGrad:
+        print("\nGradient test on |Hx|^2") 
+
+        def fct(x, twObs, model, tlm):
+            Hx=twObs.modelEquivalent(x, model)
+            J=0.5*twObs.squareNorm(Hx)
+            return J
+
+        def gradFct(x, twObs, model, tlm):
+            Hx=twObs.modelEquivalent(x, model)
+            tlm.reference(model.integrate(x, twObs.times[-1]))
+            RHx={}
+            for t in Hx.keys():
+                RHx[t]=np.dot(twObs[t].metric, Hx[t])
+            gradJ=twObs.modelEquivalent_Adj(RHx, tlm)
+            return gradJ
+
+        kdv.gradientTest(u0, fct, gradFct, args=(twObs1, model, tlm))
