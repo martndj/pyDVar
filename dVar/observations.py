@@ -482,7 +482,7 @@ class TimeWindowObs(object):
 
         self.nTimes=len(self.times)
         self.tMax=np.max(self.times)
-        self.tMin=np.max(self.times)
+        self.tMin=np.min(self.times)
         self.d_Obs=d_Obs
         self.nObs=0
         self.values={}
@@ -513,10 +513,11 @@ class TimeWindowObs(object):
             
     #------------------------------------------------------
 
-    def __times2NDt(self, dt):
+    def __times2NDt(self, dt, t0=0.):
         nDtList=[]
         for t in self.times:
-            nDtList.append(int(t/dt))
+            if t > t0:
+                nDtList.append(int((t-t0)/dt))
         return nDtList
 
     #------------------------------------------------------
@@ -545,7 +546,7 @@ class TimeWindowObs(object):
 
     def modelEquivalent(self, x, nlModel, t0=0.):
         self.__propagatorValidate(nlModel)
-        nDtList=self.__times2NDt(nlModel.dt)
+        nDtList=self.__times2NDt(nlModel.dt, t0=t0)
         g=nlModel.grid
 
         d_x=nlModel.d_nDtInt(x, nDtList, t0=t0)
@@ -562,7 +563,7 @@ class TimeWindowObs(object):
 
     def modelEquivalentTLM(self, x, tlm, t0=0.):
         self.__propagatorValidate(tlm, tlm=True)
-        nDtList=self.__times2NDt(tlm.dt)
+        nDtList=self.__times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
 
         d_x=tlm.d_nDtInt(x, nDtList, t0=t0)
@@ -578,7 +579,7 @@ class TimeWindowObs(object):
         
     def modelEquivalent_Adj(self, d_inno, tlm, t0=0.):
         self.__propagatorValidate(tlm, tlm=True)
-        nDtList=self.__times2NDt(tlm.dt)
+        nDtList=self.__times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
 
         d_w={} 
@@ -740,16 +741,20 @@ if __name__=="__main__":
     #----| TimeWindow Obs |-----------------------    
     testOpHAdj=True
     testOpHGrad=True
-    tInt=10.
-    kdvParam=kdv.Param(g)
-    model=kdv.kdvLauncher(kdvParam, dt=0.01)
+    tTotal=10.
+    t0=4.
+    tInt=tTotal-t0
+    dt=0.01
 
-    u=model.integrate(u0, tInt)
+    kdvParam=kdv.Param(g)
+    model=kdv.kdvLauncher(kdvParam, dt=dt)
+
+    u=model.integrate(u0, tTotal)
     
     nObs=10
     freqObs=3
     d_Obs={}
-    timesObs=[i*tInt/freqObs for i in xrange(1,freqObs+1)]
+    timesObs=[i*(tTotal)/freqObs for i in xrange(1,freqObs+1)]
     for tObs in timesObs:
         coords=rndSampling(g, nObs, seed=tObs)
         d_Obs[tObs]=StaticObs(coords, 
@@ -769,12 +774,13 @@ if __name__=="__main__":
         tlm.reference(u)
 
         x=kdv.rndSpecVec(g, amp=0.1, seed=1)
-        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2), tlm)
+        y=twObs1.modelEquivalent(kdv.rndSpecVec(g, amp=0.1, seed=2),
+                                    tlm, t0=t0)
 
         print("  1: x -( H )-> Hx ")
-        Hx=twObs1.modelEquivalentTLM(x, tlm)
+        Hx=twObs1.modelEquivalentTLM(x, tlm, t0=t0)
         print("  2: y -( H*)-> H*y ")
-        Ay=twObs1.modelEquivalent_Adj(y, tlm)
+        Ay=twObs1.modelEquivalent_Adj(y, tlm, t0=t0)
         
         y_Hx=0.
         for t in y.keys():
@@ -785,18 +791,18 @@ if __name__=="__main__":
     if testOpHGrad:
         print("\nGradient test on |Hx|^2") 
 
-        def fct(x, twObs, model, tlm):
-            Hx=twObs.modelEquivalent(x, model)
+        def fct(x, twObs, model, tlm, t0):
+            Hx=twObs.modelEquivalent(x, model, t0=t0)
             J=0.5*twObs.squareNorm(Hx)
             return J
 
-        def gradFct(x, twObs, model, tlm):
-            Hx=twObs.modelEquivalent(x, model)
-            tlm.reference(model.integrate(x, twObs.times[-1]))
+        def gradFct(x, twObs, model, tlm, t0):
+            Hx=twObs.modelEquivalent(x, model, t0=t0)
+            tlm.reference(model.integrate(x, twObs.times[-1], t0=t0))
             RHx={}
             for t in Hx.keys():
                 RHx[t]=np.dot(twObs[t].metric, Hx[t])
-            gradJ=twObs.modelEquivalent_Adj(RHx, tlm)
+            gradJ=twObs.modelEquivalent_Adj(RHx, tlm, t0=t0)
             return gradJ
 
-        kdv.gradientTest(u0, fct, gradFct, args=(twObs1, model, tlm))
+        kdv.gradientTest(u0, fct, gradFct, args=(twObs1, model, tlm, t0))
