@@ -410,7 +410,7 @@ class StaticObs(object):
         if not isinstance(statObs, StaticObs): raise TypeError()
         
         if obsOpEq:
-            if (selobsJTerm.pyf.obsOp<>statObs.obsOp or
+            if (self.obsOp<>statObs.obsOp or
                 self.obsOpTLMAdj<>statObs.obsOpTLMAdj or
                 self.obsOpArgs<>statObs.obsOpArgs):
                 raise ValueError()
