@@ -233,6 +233,8 @@ class TWObsJTerm(JTerm):
             if t>self.tWin[0] and t <=self.tWin[1] : 
                 d_ObsExt[t]=obs.d_Obs[t]
     
+        # if no obs on the window?
+
         return TimeWindowObs(d_ObsExt)
     
     #------------------------------------------------------
