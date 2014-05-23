@@ -233,8 +233,6 @@ class TWObsJTerm(JTerm):
             if t>self.tWin[0] and t <=self.tWin[1] : 
                 d_ObsExt[t]=obs.d_Obs[t]
     
-        # if no obs on the window?
-
         return TimeWindowObs(d_ObsExt)
     
     #------------------------------------------------------
@@ -252,27 +250,33 @@ class TWObsJTerm(JTerm):
     #------------------------------------------------------
 
     def _costFunc(self, x): 
-        self.__xValidate(x)
-        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
-        Jo=0.5*self.obs.prosca(d_inno, d_inno)
-        return Jo
+        if self.obs.empty:
+            return 0.
+        else:
+            self.__xValidate(x)
+            d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
+            Jo=0.5*self.obs.prosca(d_inno, d_inno)
+            return Jo
 
     #------------------------------------------------------
 
     def _gradCostFunc(self, x):
         self.__xValidate(x)
-        self.tlm.reference(self.nlModel.integrate(
+        if self.obs.empty:
+            return np.zeros(shape=x.shape)
+        else:
+            self.tlm.reference(self.nlModel.integrate(
                                 x, 
                                 self.obs.times[-1]-self.tWin[0],
                                 t0=self.tWin[0]))
-        d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
-        d_NormInno={}
-        for t in d_inno.keys():
-            d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
+            d_inno=self.obs.innovation(x, self.nlModel, t0=self.tWin[0])
+            d_NormInno={}
+            for t in d_inno.keys():
+                d_NormInno[t]=np.dot(self.obs[t].metric,d_inno[t])
         
-        grad=-self.obs.modelEquivalent_Adj(d_NormInno, self.tlm, 
+            grad=-self.obs.modelEquivalent_Adj(d_NormInno, self.tlm, 
                                             t0=self.tWin[0])
-        return grad
+            return grad
 
 
 #=====================================================================

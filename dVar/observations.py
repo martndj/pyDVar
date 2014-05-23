@@ -383,7 +383,8 @@ class StaticObs(object):
         output+="\n   nObs=%d"%self.nObs
         output+="\n   coord:\n     %s\n"%self.coord.__str__()
         output+="\n   observation operator:\n     %s"%self.obsOp
-        output+="\n   observation tangeant operator adjoint:\n     %s"%self.obsOpTLMAdj
+        output+="\n   observation tangeant operator adjoint:"
+        output+="\n     %s"%self.obsOpTLMAdj
         output+="\n____________________________________________"
         return output
 
@@ -469,28 +470,39 @@ class TimeWindowObs(object):
         
         if not isinstance(d_Obs, dict):
             raise TypeError("d_Obs <dict {time:<StaticObs>}>")
-        for t in d_Obs.keys():
-            if not (isinstance(t, (float,int)) 
-                    and isinstance(d_Obs[t], StaticObs)):
-                raise TypeError(
+        if d_Obs.keys()==[]:
+            self.empty=True
+        else:
+            self.empty=False
+            for t in d_Obs.keys():
+                if not (isinstance(t, (float,int)) 
+                        and isinstance(d_Obs[t], StaticObs)):
+                    raise TypeError(
                         "d_Obs <dict {time <float>: <StaticObs>}>")
-            if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
-                raise ValueError("all obsOp must be the same")
+                if d_Obs[t].obsOp<>d_Obs[d_Obs.keys()[0]].obsOp:
+                    raise ValueError("all obsOp must be the same")
+
 
         self.times=np.array(d_Obs.keys())
         self.times.sort()
 
         self.nTimes=len(self.times)
-        self.tMax=np.max(self.times)
-        self.tMin=np.min(self.times)
         self.d_Obs=d_Obs
         self.nObs=0
         self.values={}
-        for t in self.times:
-            self.nObs+=self.d_Obs[t].nObs
-            self.values[t]=self.d_Obs[t].values
-        self.obsOp=d_Obs[self.times[0]].obsOp
-        self.obsOpArgs=d_Obs[self.times[0]].obsOpArgs
+        if not self.empty:
+            self.tMax=np.max(self.times)
+            self.tMin=np.min(self.times)
+            for t in self.times:
+                self.nObs+=self.d_Obs[t].nObs
+                self.values[t]=self.d_Obs[t].values
+            self.obsOp=d_Obs[self.times[0]].obsOp
+            self.obsOpArgs=d_Obs[self.times[0]].obsOpArgs
+        else:
+            self.tMax=None
+            self.tMin=None
+            self.obsOp=None
+            self.obsOpArgs=()
 
        
                 
@@ -545,6 +557,8 @@ class TimeWindowObs(object):
     #------------------------------------------------------
 
     def modelEquivalent(self, x, nlModel, t0=0.):
+        if self.empty:
+            raise RuntimeError()
         self.__propagatorValidate(nlModel)
         nDtList=self.__times2NDt(nlModel.dt, t0=t0)
         g=nlModel.grid
@@ -562,6 +576,8 @@ class TimeWindowObs(object):
     #------------------------------------------------------
 
     def modelEquivalentTLM(self, x, tlm, t0=0.):
+        if self.empty:
+            raise RuntimeError()
         self.__propagatorValidate(tlm, tlm=True)
         nDtList=self.__times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
@@ -578,6 +594,8 @@ class TimeWindowObs(object):
 
         
     def modelEquivalent_Adj(self, d_inno, tlm, t0=0.):
+        if self.empty:
+            raise RuntimeError()
         self.__propagatorValidate(tlm, tlm=True)
         nDtList=self.__times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
@@ -596,6 +614,8 @@ class TimeWindowObs(object):
     #------------------------------------------------------
     
     def innovation(self, x, nlModel, t0=0.):
+        if self.empty:
+            raise RuntimeError()
         self.__propagatorValidate(nlModel)
         d_inno={}
         d_Hx=self.modelEquivalent(x, nlModel, t0=t0)
@@ -632,6 +652,8 @@ class TimeWindowObs(object):
                     **kwargs):
 
 
+        if self.empty:
+            raise RuntimeError()
         if not (isinstance(trajectory, Trajectory) or trajectory==None): 
             raise TypeError("trajectory <None | Trajectory>")
         if self.nTimes < nbGraphLine:
