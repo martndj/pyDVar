@@ -311,8 +311,9 @@ class StaticObs(object):
 
     #-------------------------------------------------------
 
-    def plotObs(self, g, continuousField=None, axe=None, 
-                marker='o',  correlation=False, xlim=None,   
+    def plotObs(self, g, continuousField=None, axe=None, marker='o',
+                correlation=False, observability=False, deviation=None,
+                xlim=None,   ylim=None,
                 continuousFieldStyle='k-', 
                 continuousFieldLabel=None,
                 **kwargs):
@@ -327,15 +328,27 @@ class StaticObs(object):
                     len(continuousField)==g.N):
                 axe.plot(g.x, continuousField, continuousFieldStyle, 
                         label=continuousFieldLabel)
-                if correlation==True:
-                    axe.text(0.05,0.95,r'$\rho_c=%.2f$'%self.correlation(
-                        self.modelEquivalent(continuousField, g)),
-                        transform=axe.transAxes)
+                if observability or correlation:
+                    text=""
+                    if observability:
+                        text+=(r'$\Vert x\Vert_o=%.2f$'%self.norm(
+                                self.modelEquivalent(continuousField, g))
+                                +'\n')
+                    if correlation:
+                        text+=(r'$\rho_c=%.2f$'%self.correlation(
+                                self.modelEquivalent(continuousField, g))
+                                +'\n')
+                    axe.text(0.05,0.8, text, transform=axe.transAxes)
+                if isinstance(deviation, (float, int)):
+                    axe.axhline(y=deviation, linestyle=':', color='k')
+                    axe.axhline(y=-deviation, linestyle=':', color='k')
             else:
                 raise ValueError(
                         "incompatible continuous field dimensions")
         if xlim<>None:
             axe.set_xlim(xlim)
+        if ylim<>None:
+            axe.set_ylim(ylim)
         return axe
 
     #-------------------------------------------------------
@@ -646,8 +659,10 @@ class TimeWindowObs(object):
     #----| Plotting methods |-------------------------------
     #-------------------------------------------------------
     
-    def plotObs(self, g, nbGraphLine=3, trajectory=None, correlation=False, 
-                    trajectoryStyle='k', xlim=None, 
+    def plotObs(self, g, nbGraphLine=3, trajectory=None, 
+                    observability=False, correlation=False, deviation=None, 
+                    xlim=None, ylim=None, 
+                    trajectoryStyle='k', 
                     trajectoryLabel=None,
                     **kwargs):
 
@@ -667,13 +682,16 @@ class TimeWindowObs(object):
         for t in self.times:
             axes.append(plt.subplot(nSubLine, nSubRow, i+1))
             if trajectory==None:
-                self[t].plotObs(g, axe=axes[i], xlim=xlim, **kwargs)
+                self[t].plotObs(g, axe=axes[i], xlim=xlim, ylim=ylim,
+                                deviation=deviation, **kwargs)
             else:
-                self[t].plotObs(g, axe=axes[i], xlim=xlim,
+                self[t].plotObs(g, axe=axes[i], xlim=xlim, ylim=ylim, 
                                 continuousField=trajectory.whereTime(t),
                                 continuousFieldStyle=trajectoryStyle, 
                                 continuousFieldLabel=trajectoryLabel,
-                                correlation=correlation, **kwargs)
+                                correlation=correlation, 
+                                observability=observability, 
+                               deviation=deviation, **kwargs)
             axes[i].set_title("$t=%f$"%t)
             i+=1
 
