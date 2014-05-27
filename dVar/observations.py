@@ -256,6 +256,10 @@ class StaticObs(object):
     def norm(self, y):
         return np.sqrt(self.prosca(y,y))
 
+
+    def modelEqNorm(self, x, g):
+        return self.norm(self.modelEquivalent(x, g))
+    
     #------------------------------------------------------
 
     def correlation(self, y):
