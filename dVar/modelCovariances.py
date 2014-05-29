@@ -180,7 +180,7 @@ if __name__=='__main__':
     N=11
     mu=1.
     sigRnd=1.
-    sig=0.1
+    sig=0.3
     
 
     
@@ -248,7 +248,7 @@ if __name__=='__main__':
 
     if covType=='str':
         testDirect=np.dot(xNoise, B_sqrt_str_op(xi,*B_args).conj())
-        testAdjoint=B_sqrt_op_Adj(xNoise, *B_args)*xi
+        testAdjoint=B_sqrt_str_op_Adj(xNoise, *B_args)*xi
 
     if covType=='inv':
         testDirect=np.dot(yNoise, 
@@ -261,6 +261,9 @@ if __name__=='__main__':
     print(testDirect-testAdjoint)
     
     if correlationTest and covType in ('isoHomo','str'):
+        if covType=='isoHomo': B_op=B_isoHomo_op
+        if covType=='str': B_op=B_str_op
+
         # correlation test
         xDirac=np.zeros(g.N)
         NDirac=Ng/4
