@@ -53,9 +53,17 @@ def ifft_Adj(x):
     xi=xi/N
     return xi
 
+def fft_Adj(xi):
+    N=len(xi)
+
+    x=np.zeros(N)
+    x=np.fft.ifft(xi)
+    x=x*N
+    return x
+
 def B_sqrt_isoHomo_op(xi, sig, rCTilde_sqrt, aliasing=3):
     """
-        B_{1/2} operator
+        B^{1/2} operator
 
         sig             :   1D array of std
                             (diagonal os Sigma matrix)
@@ -84,6 +92,46 @@ def B_isoHomo_op(x, sig, rCTilde_sqrt):
     return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, sig, rCTilde_sqrt),
                         sig, rCTilde_sqrt)
 
+def B_sqrt_isoHomo_inv_op(xi, sig, rCTilde_sqrt):
+    """
+        B^{-1/2} operator
+        
+        sig             :   1D array of std
+                            (diagonal os Sigma matrix)
+        rCTilde_sqrt    :   1D array of the diagonal
+                            of CTilde_sqrt (in 'r' basis)
+    """
+    Ntrc=(len(xi)-1)/3
+
+    x2=specFilt(xi, Ntrc)           #   1
+    x1=x2*sig**(-1)                 #   2
+    xiC=np.fft.fft(x1)              #   3
+    xiR=r2c_Adj(xiC)                #   4
+    return rCTilde_sqrt**(-1)*xiR   #   5
+    
+def B_sqrt_isoHomo_inv_op_Adj(x, sig, rCTilde_sqrt):
+    """
+        B^{1/2} adjoint operator
+
+        sig             :   1D array of std
+                            (diagonal os Sigma matrix)
+        rCTilde_sqrt    :   1D array of the diagonal
+                            of CTilde_sqrt (in 'r' basis)
+    """
+    Ntrc=(len(x)-1)/3
+
+    xiR=rCTilde_sqrt**(-1)*x        #   5.T
+    xiC=r2c(xiR)                    #   4.T
+    x1=fft_Adj(xiC).real            #   3.T
+    x2=x1*sig**(-1)                 #   2.T
+    return specFilt(x2, Ntrc)       #   1.T
+
+
+def B_isoHomo_inv_op(x, sig, rCTilde_sqrt):
+    return B_sqrt_isoHomo_inv_op_Adj(B_sqrt_isoHomo_inv_op(
+                        x, sig, rCTilde_sqrt),
+                        sig, rCTilde_sqrt)
+
 def make_BisoHomo_args(grid, bkgLC, bkgSig):
     corr=fCorr_isoHomo(grid, bkgLC)
     rCTilde_sqrt=rCTilde_sqrt_isoHomo(grid, corr)
@@ -91,8 +139,14 @@ def make_BisoHomo_args(grid, bkgLC, bkgSig):
     return (sig, rCTilde_sqrt)
 
 
-def normBInv(x, grid):
-    pass
+def normBInv(x, grid, bkgLC, bkgSig):
+    """ 
+        x'.B^{-1}.x
+    """
+    B_args=make_BisoHomo_args(grid, bkgLC, bkgSig)
+    return np.dot(x, B_isoHomo_inv_op(x, *B_args))
+
+
 #-------------------------------------------------
 #----| Structure function covariances |-----------
 #-------------------------------------------------
@@ -115,11 +169,13 @@ if __name__=='__main__':
     import random as rnd
     import matplotlib.pyplot as plt
     from pseudoSpec1D import PeriodicGrid
-    rnd.seed(0.4573216806)
+    rnd.seed(None)
     
+    correlationTest=True
 
     #covType='str'
-    covType='isoHomo'
+    #covType='isoHomo'
+    covType='inv'
 
     N=11
     mu=1.
@@ -146,6 +202,10 @@ if __name__=='__main__':
     x_LAdjy=np.dot(x, ifft_Adj(y).conj())
     print(Lx_y-x_LAdjy)
 
+    print("Testing adjoint of fft()")
+    Lx_y=np.dot(x, np.fft.fft(y).conj())
+    x_LAdjy=np.dot(fft_Adj(x), y.conj())
+    print(Lx_y-x_LAdjy)
 
 
     Ng=100
@@ -153,15 +213,12 @@ if __name__=='__main__':
     
     
 
-    if covType=='isoHomo':
+    if covType in ('isoHomo', 'inv'):
         lCorr=5.
         sigMatrix=sig*np.ones(g.N)
         fCorr=fCorr_isoHomo(g, lCorr)
         CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
 
-        B_sqrt_op=B_sqrt_isoHomo_op
-        B_sqrt_op_Adj=B_sqrt_isoHomo_op_Adj
-        B_op=B_isoHomo_op
         B_args=(sigMatrix, CTilde_sqrt)
 
 
@@ -171,14 +228,11 @@ if __name__=='__main__':
             return 0.5*(np.exp(-0.5*(x/Lb)**2)
                        *np.cos(4.*(x/Lb)))
  
-        B_sqrt_op=B_sqrt_str_op
-        B_sqrt_op_Adj=B_sqrt_str_op_Adj
-        B_op=B_str_op
         B_args=(sig, strFunc(g.x, 3.))
     
     
     # adjoint test
-    rnd.seed(0.4573216806)
+    rnd.seed(None)
     mu=0.; sigNoise=2.
     xNoise=np.zeros(g.N)
     yNoise=np.zeros(g.N)
@@ -188,33 +242,40 @@ if __name__=='__main__':
         xNoise[i]=rnd.gauss(mu, sigNoise)
 
     if covType=='isoHomo':
-        testDirect=np.dot(xNoise, B_sqrt_op(yNoise, *B_args).conj())
-        testAdjoint=np.dot(B_sqrt_op_Adj(xNoise, *B_args), yNoise.conj())
+        testDirect=np.dot(xNoise, B_sqrt_isoHomo_op(yNoise, *B_args).conj())
+        testAdjoint=np.dot(B_sqrt_isoHomo_op_Adj(xNoise, *B_args), 
+                                yNoise.conj())
 
     if covType=='str':
         testDirect=np.dot(xNoise, B_sqrt_str_op(xi,*B_args).conj())
         testAdjoint=B_sqrt_op_Adj(xNoise, *B_args)*xi
 
+    if covType=='inv':
+        testDirect=np.dot(yNoise, 
+                        B_sqrt_isoHomo_inv_op(xNoise, *B_args)).conj()
+        testAdjoint=np.dot(B_sqrt_isoHomo_inv_op_Adj(yNoise, *B_args),
+                        xNoise.conj())
         
     
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
     print(testDirect-testAdjoint)
     
-    # correlation test
-    xDirac=np.zeros(g.N)
-    NDirac=Ng/4
-    xDirac[NDirac]=1.
-    x0Dirac=g.x[NDirac]
-    xTest=B_op(xDirac, *B_args)
+    if correlationTest and covType in ('isoHomo','str'):
+        # correlation test
+        xDirac=np.zeros(g.N)
+        NDirac=Ng/4
+        xDirac[NDirac]=1.
+        x0Dirac=g.x[NDirac]
+        xTest=B_op(xDirac, *B_args)
+            
         
-
-    plt.figure()
-    plt.plot(g.x, xTest, 'b', label=r'$ B(\delta(x-x_0))$')
-    if covType=='isoHomo':
-        plt.plot(g.x, sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'g', 
-                label=r'$\sigma^2f_{corr}(x-x_0)$')
-    elif covType=='str':
-        pass
-    plt.legend(loc='best')
-    plt.title(r'$\sigma=%.1f$'%sig)
-    plt.show()
+        plt.figure()
+        plt.plot(g.x, xTest, 'b', label=r'$ B(\delta(x-x_0))$')
+        if covType=='isoHomo':
+            plt.plot(g.x, sig**2*fCorr_isoHomo(g, lCorr, x0Dirac), 'g', 
+                    label=r'$\sigma^2f_{corr}(x-x_0)$')
+        elif covType=='str':
+            pass
+        plt.legend(loc='best')
+        plt.title(r'$\sigma=%.1f$'%sig)
+        plt.show()
