@@ -57,7 +57,7 @@ def fft_Adj(xi):
     N=len(xi)
 
     x=np.zeros(N)
-    x=np.fft.ifft(xi)
+    x=np.fft.ifft(xi)#.real
     x=x*N
     return x
 
@@ -74,7 +74,7 @@ def B_sqrt_isoHomo_op(xi, sig, rCTilde_sqrt, aliasing=3):
 
     xiR=rCTilde_sqrt*xi         #   1
     xiC=r2c(xiR)                #   2
-    x1=np.fft.ifft(xiC).real    #   3
+    x1=np.fft.ifft(xiC)         #   3
     x2=x1*sig                   #   4
     return specFilt(x2, Ntrc)   #   5
 
@@ -92,7 +92,7 @@ def B_isoHomo_op(x, sig, rCTilde_sqrt):
     return B_sqrt_isoHomo_op(B_sqrt_isoHomo_op_Adj(x, sig, rCTilde_sqrt),
                         sig, rCTilde_sqrt)
 
-def B_sqrt_isoHomo_inv_op(xi, sig, rCTilde_sqrt):
+def B_sqrt_isoHomo_inv_op(x, sig, rCTilde_sqrt):
     """
         B^{-1/2} operator
         
@@ -104,15 +104,15 @@ def B_sqrt_isoHomo_inv_op(xi, sig, rCTilde_sqrt):
         <!> I can't explain the '2' factor in the return
         but it seems the way to pass tests
     """
-    Ntrc=(len(xi)-1)/3
+    Ntrc=(len(x)-1)/3
 
-    x2=specFilt(xi, Ntrc)           #   1
-    x1=x2*sig**(-1)                 #   2
-    xiC=np.fft.fft(x1)              #   3
+    x1=specFilt(x, Ntrc)           #   1
+    x2=x1*sig**(-1)                 #   2
+    xiC=np.fft.fft(x2)              #   3
     xiR=r2c_Adj(xiC)                #   4
     return 2.*rCTilde_sqrt**(-1)*xiR   #   5
     
-def B_sqrt_isoHomo_inv_op_Adj(x, sig, rCTilde_sqrt):
+def B_sqrt_isoHomo_inv_op_Adj(xi, sig, rCTilde_sqrt):
     """
         B^{1/2} adjoint operator
 
@@ -121,13 +121,13 @@ def B_sqrt_isoHomo_inv_op_Adj(x, sig, rCTilde_sqrt):
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
     """
-    Ntrc=(len(x)-1)/3
+    Ntrc=(len(xi)-1)/3
 
-    xiR=2.*rCTilde_sqrt**(-1)*x        #   5.T
+    xiR=2.*rCTilde_sqrt**(-1)*xi        #   5.T
     xiC=r2c(xiR)                    #   4.T
-    x1=fft_Adj(xiC).real            #   3.T
-    x2=x1*sig**(-1)                 #   2.T
-    return specFilt(x2, Ntrc)       #   1.T
+    x2=fft_Adj(xiC)            #   3.T
+    x1=x2*sig**(-1)                 #   2.T
+    return specFilt(x1, Ntrc)       #   1.T
 
 
 def B_isoHomo_inv_op(x, sig, rCTilde_sqrt):
@@ -171,20 +171,23 @@ def B_str_op(x, sig, strVec):
 if __name__=='__main__':
     import random as rnd
     import matplotlib.pyplot as plt
-    from pseudoSpec1D import PeriodicGrid, gauss
+    from pseudoSpec1D import PeriodicGrid
     rnd.seed(None)
     
     correlationTest=True
 
     #covType='str'
-    #covType='isoHomo'
-    covType='inv'
+    covType='isoHomo'
+    #covType='inv'
 
     N=11
     mu=1.
     sigRnd=1.
-    sig=0.3
+    sig=3.
+    lCorr=30.
     
+    Ng=100
+    g=PeriodicGrid(Ng)
 
     
     x=np.empty(N, dtype='complex')
@@ -211,13 +214,10 @@ if __name__=='__main__':
     print(Lx_y-x_LAdjy)
 
 
-    Ng=100
-    g=PeriodicGrid(Ng, 100.)#, aliasing=1)
     
     
 
     if covType in ('isoHomo', 'inv'):
-        lCorr=5.
         sigMatrix=sig*np.ones(g.N)
         fCorr=fCorr_isoHomo(g, lCorr)
         CTilde_sqrt=rCTilde_sqrt_isoHomo(g, fCorr)
@@ -231,7 +231,7 @@ if __name__=='__main__':
             return 0.5*(np.exp(-0.5*(x/Lb)**2)
                        *np.cos(4.*(x/Lb)))
  
-        B_args=(sig, strFunc(g.x, 3.))
+        B_args=(sig, strFunc(g.x, lCorr))
     
     
     # adjoint test
@@ -255,10 +255,10 @@ if __name__=='__main__':
 
     if covType=='inv':
         testDirect=np.dot(yNoise, 
-                        B_sqrt_isoHomo_inv_op(xNoise, *B_args)).conj()
+                        B_sqrt_isoHomo_inv_op(xNoise, *B_args).conj())
         testAdjoint=np.dot(B_sqrt_isoHomo_inv_op_Adj(yNoise, *B_args),
                         xNoise.conj())
-        
+
     
     print("Adjoint test with noise: <x,Gy>-<G*x,y>")
     print(testDirect-testAdjoint)
@@ -300,3 +300,4 @@ if __name__=='__main__':
         g.plot(xi)
         g.plot(xiTmp2)
         g.plot(xi2)
+        plt.show()

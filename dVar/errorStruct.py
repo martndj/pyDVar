@@ -24,12 +24,10 @@ def errStr_isoHomo(grid, bkgLC, bkgSig=1., seed=None):
         (coherent with the statics assimilation statistics using
             B_sqrt_isoHomo_op)
     '''
-    xi=grid.zeros()
     B_args=make_BisoHomo_args(grid, bkgLC, bkgSig)
 
     np.random.seed(seed)
-    for i in xrange(grid.N):
-        xi[i]=np.random.normal()
+    xi=np.random.normal(size=grid.N)
     return B_sqrt_isoHomo_op(xi, *B_args)
 
 def sample_err_isoHomo(grid, bkgLC, bkgSig=1., nRlz=1000, std=False):
