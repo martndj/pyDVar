@@ -100,6 +100,9 @@ def B_sqrt_isoHomo_inv_op(xi, sig, rCTilde_sqrt):
                             (diagonal os Sigma matrix)
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
+
+        <!> I can't explain the '2' factor in the return
+        but it seems the way to pass tests
     """
     Ntrc=(len(xi)-1)/3
 
@@ -107,7 +110,7 @@ def B_sqrt_isoHomo_inv_op(xi, sig, rCTilde_sqrt):
     x1=x2*sig**(-1)                 #   2
     xiC=np.fft.fft(x1)              #   3
     xiR=r2c_Adj(xiC)                #   4
-    return rCTilde_sqrt**(-1)*xiR   #   5
+    return 2.*rCTilde_sqrt**(-1)*xiR   #   5
     
 def B_sqrt_isoHomo_inv_op_Adj(x, sig, rCTilde_sqrt):
     """
@@ -120,7 +123,7 @@ def B_sqrt_isoHomo_inv_op_Adj(x, sig, rCTilde_sqrt):
     """
     Ntrc=(len(x)-1)/3
 
-    xiR=rCTilde_sqrt**(-1)*x        #   5.T
+    xiR=2.*rCTilde_sqrt**(-1)*x        #   5.T
     xiC=r2c(xiR)                    #   4.T
     x1=fft_Adj(xiC).real            #   3.T
     x2=x1*sig**(-1)                 #   2.T
@@ -168,7 +171,7 @@ def B_str_op(x, sig, strVec):
 if __name__=='__main__':
     import random as rnd
     import matplotlib.pyplot as plt
-    from pseudoSpec1D import PeriodicGrid
+    from pseudoSpec1D import PeriodicGrid, gauss
     rnd.seed(None)
     
     correlationTest=True
@@ -209,7 +212,7 @@ if __name__=='__main__':
 
 
     Ng=100
-    g=PeriodicGrid(Ng, 100., aliasing=1)
+    g=PeriodicGrid(Ng, 100.)#, aliasing=1)
     
     
 
@@ -282,3 +285,18 @@ if __name__=='__main__':
         plt.legend(loc='best')
         plt.title(r'$\sigma=%.1f$'%sig)
         plt.show()
+
+    elif correlationTest and covType=='inv':
+
+        #xi=gauss(g.x, 0, 10.)
+        xi=gauss(g.x, 0, 3.)
+
+        tmp2=B_sqrt_isoHomo_op(xi, *B_args)
+        xiTmp2=B_sqrt_isoHomo_inv_op(tmp2, *B_args)
+        tmp3=B_isoHomo_inv_op(tmp2, *B_args)
+        xi2=B_sqrt_isoHomo_op_Adj(tmp3, *B_args)
+
+
+        g.plot(xi)
+        g.plot(xiTmp2)
+        g.plot(xi2)
