@@ -136,7 +136,7 @@ def B_isoHomo_inv_op(x, sig, rCTilde_sqrt):
 
 
 
-def normBInv(x, grid, bkgLC, bkgSig):
+def normBInv2(x, grid, bkgLC, bkgSig):
     """ 
         x'.B^{-1}.x
     """

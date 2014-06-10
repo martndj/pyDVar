@@ -9,8 +9,6 @@ class PrecondJTerm(JTerm):
         <!> This is a master class not meant to be instantiated, only
             subclasses should.
     '''
-    class PrecondJTermError(Exception):
-        pass
     
     #------------------------------------------------------
     #----| Private methods |-------------------------------
@@ -19,13 +17,13 @@ class PrecondJTerm(JTerm):
 
     def _xValidate(self, xi):
         if not isinstance(xi, np.ndarray):
-            raise self.PrecondJTermError("xi <numpy.array>")
+            raise TypeError("xi <numpy.array>")
         if not xi.dtype=='float64':
-            raise self.PrecondJTermError("xi.dtype=='float64'")
+            raise TypeError("xi.dtype=='float64'")
         if xi.ndim<>1:
-            raise self.PrecondJTermError("xi.ndim==1")
+            raise ValueError("xi.ndim==1")
         if len(xi)<>self.modelGrid.N:
-            raise self.PrecondJTermError(
+            raise ValueError(
                 "len(xi)==self.grid.N")
 
     #------------------------------------------------------
@@ -117,9 +115,9 @@ class PrecondStaticObsJTerm(PrecondJTerm, StaticObsJTerm):
                                                 maxGradNorm=maxGradNorm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
-            raise self.PrecondStaticObsJTermError("B_sqrt[Adj] <function>")
+            raise TypeError("B_sqrt[Adj] <function>")
         if not (isinstance(B_sqrtArgs, tuple)):
-            raise self.PrecondStaticObsJTermError("B_sqrtArgs <tuple>")
+            raise TypeError("B_sqrtArgs <tuple>")
         self.B_sqrt=B_sqrt
         self.B_sqrtAdj=B_sqrtAdj
         self.B_sqrtArgs=B_sqrtArgs
@@ -167,8 +165,6 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
 
     """
     
-    class PrecondTWObsJTermError(Exception):
-        pass
 
     #------------------------------------------------------
     #----| Init |------------------------------------------
@@ -183,9 +179,9 @@ class PrecondTWObsJTerm(PrecondJTerm, TWObsJTerm):
                                             maxGradNorm=maxGradNorm)  
 
         if not (callable(B_sqrt) and callable(B_sqrtAdj)):
-            raise self.PrecondTWObsJTermError("B_sqrt[Adj] <function>")
+            raise TypeError("B_sqrt[Adj] <function>")
         if not (isinstance(B_sqrtArgs, tuple)):
-            raise self.PrecondTWObsJTermError("B_sqrtArgs <tuple>")
+            raise TypeError("B_sqrtArgs <tuple>")
         self.B_sqrt=B_sqrt
         self.B_sqrtAdj=B_sqrtAdj
         self.B_sqrtArgs=B_sqrtArgs
