@@ -143,6 +143,12 @@ def normBInv2(x, grid, bkgLC, bkgSig):
     B_args=make_BisoHomo_args(grid, bkgLC, bkgSig)
     return np.dot(x, B_isoHomo_inv_op(x, *B_args))
 
+def normBInv2Norm(x, grid, bkgLC, bkgSig):
+    """ 
+        x'.B^{-1}.x/N
+    """
+    return normBInv2(x, grid, bkgLC, bkgSig)/grid.N
+
 
 #-------------------------------------------------
 #----| Structure function covariances |-----------
