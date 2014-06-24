@@ -106,17 +106,21 @@ def B_sqrt_isoHomo_inv_op(x, sig, rCTilde_sqrt):
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
 
-        <!> I can't explain the '2' factor in the return
-        but it seems the way to pass tests
-
-        <!> Also, it seems there is an error with mode 0
-        It is possible it is linked to the former comment and the
-        fact that there is no imaginary part for that mode.
+        <!> I can't explain the factor 2 in all but the 0th mode,
+        but that's the 'duck-tape solution' I found so that B^{-1/2}
+        is the inverse of B^{1/2}.
+        
     """
+    N=len(x)
+    xiR2=np.zeros(N)
+
     x2=x*sig**(-1)                    #   1
     xiC=np.fft.fft(x2)                #   2
     xiR=r2c_Adj(xiC)                  #   3
-    return 2.*rCTilde_sqrt**(-1)*xiR  #   4
+    xiR2[0]=xiR[0]
+    for i in xrange(1,N):
+        xiR2[i]=2.*xiR[i]             #   4
+    return rCTilde_sqrt**(-1)*xiR2    #   5
     
 def B_sqrt_isoHomo_inv_op_Adj(xi, sig, rCTilde_sqrt):
     """
@@ -127,7 +131,13 @@ def B_sqrt_isoHomo_inv_op_Adj(xi, sig, rCTilde_sqrt):
         rCTilde_sqrt    :   1D array of the diagonal
                             of CTilde_sqrt (in 'r' basis)
     """
-    xiR=2.*rCTilde_sqrt**(-1)*xi    #   4.T
+    N=len(xi)
+    xiR=np.zeros(N)
+
+    xiR2=rCTilde_sqrt**(-1)*xi      #   5.T
+    for i in xrange(1,N):
+        xiR[i]=2.*xiR2[i]
+    xiR[0]=xiR2[0]                  #   4.T
     xiC=r2c(xiR)                    #   3.T
     x2=fft_Adj(xiC)                 #   2.T
     return x2*sig**(-1)             #   1.T
@@ -181,8 +191,8 @@ if __name__=='__main__':
     correlationTest=True
 
     #covType='str'
-    covType='isoHomo'
-    #covType='inv'
+    #covType='isoHomo'
+    covType='inv'
 
     N=11
     mu=1.
@@ -293,7 +303,7 @@ if __name__=='__main__':
     elif correlationTest and covType=='inv':
 
         #xi=gauss(g.x, 0, 10.)
-        xi=gauss(g.x, 0, 3.)
+        xi=gauss(g.x, 0, 3.)+2.
 
         tmp2=B_sqrt_isoHomo_op(xi, *B_args)
         xiTmp2=B_sqrt_isoHomo_inv_op(tmp2, *B_args)
