@@ -108,6 +108,10 @@ def B_sqrt_isoHomo_inv_op(x, sig, rCTilde_sqrt):
 
         <!> I can't explain the '2' factor in the return
         but it seems the way to pass tests
+
+        <!> Also, it seems there is an error with mode 0
+        It is possible it is linked to the former comment and the
+        fact that there is no imaginary part for that mode.
     """
     x2=x*sig**(-1)                    #   1
     xiC=np.fft.fft(x2)                #   2
