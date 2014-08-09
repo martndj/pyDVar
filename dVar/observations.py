@@ -10,7 +10,7 @@ import pickle
 #----| Utilitaries |----------------------------------------
 #-----------------------------------------------------------
 
-def degrad(signal,mu,sigma,seed=0.7349156729):
+def degrad(signal,mu,sigma,seed=None):
     ''' 
     Gaussian noise signal degradation
 
@@ -37,28 +37,45 @@ def degradTraj(traj, mu, sigma, seed=None):
 #----| Sampling |-------------------------------------------
 #-----------------------------------------------------------
 
-def homoSampling(grid, nObs):
+def homoSampling(grid, nObs, xlim=None):
     if not isinstance(grid, Grid):
         raise TypeError("grid <pseudoSpec>")
+    if xlim:
+        if np.array(xlim).shape<>(2,): raise TypeError()
+        if xlim[0]>=xlim[1] or xlim[0]<grid.min() or xlim[1]>grid.max():
+            raise ValueError()
 
     coord=[]
-    ObsDx=(grid.max()-grid.min())/nObs
+    if xlim:
+        minCoord=xlim[0]
+        maxCoorr=xlim[1]
+    else:
+        minCoord=grid.min()
+        maxCoord=grid.max()
+
+    ObsDx=(maxCoord-minCoord)/nObs
     for j in xrange(nObs):
-        coord.append(grid.min()+j*ObsDx)
+        coord.append(minCoord+j*ObsDx)
     return coord
 
-def rndSampling(grid, nObs, precision=2, seed=None):
+def rndSampling(grid, nObs, precision=2, xlim=None, seed=None):
     if not isinstance(grid, Grid):
         raise TypeError("grid <pseudoSpec>")
+    if xlim:
+        if np.array(xlim).shape<>(2,): raise TypeError()
+        if xlim[0]>=xlim[1] or xlim[0]<grid.min() or xlim[1]>grid.max():
+            raise ValueError()
 
     rnd.seed(seed)
     coord=[]
     i=0
     while (i < nObs):
-        
-        pick=round(rnd.random()*grid.L, precision)
-        if grid.centered:
-            pick-=grid.L/2
+        if xlim:
+            pick=round(rnd.random()*(xlim[1]-xlim[0]), precision)+xlim[0]
+        else:
+            pick=round(rnd.random()*grid.L, precision)
+            if grid.centered:
+                pick-=grid.L/2
         if ((not pick in coord) and (pick <=grid.max()) 
                 and (pick >=grid.min()) ):
             coord.append(pick)
