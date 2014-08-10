@@ -178,6 +178,17 @@ def B_str_op(x, sig, strVec):
     return B_sqrt_str_op(B_sqrt_str_op_Adj(x, sig, strVec),
                         sig, strVec)
 
+#-------------------------------------------------
+#----| Adapted icovariances |---------------------
+#-------------------------------------------------
+
+def normBInvAdapted2(x, grid, strVec, bkgLC, bkgSig, sigAdapted):
+    (SigMat, rCTilde_sqrt)=make_BisoHomo_args(grid, bkgLC, bkgSig)
+    xi1=B_sqrt_isoHomo_inv_op(x, SigMat, rCTilde_sqrt)
+    xiStr=B_sqrt_isoHomo_inv_op(strVec, SigMat, rCTilde_sqrt)
+    xi2=xi1-sigAdapted**2/(1.+sigAdapted**2)*np.dot(np.outer(xiStr,xiStr),xi1)
+    return np.dot(x,B_sqrt_isoHomo_inv_op_Adj(xi2, SigMat, rCTilde_sqrt))
+
 #=====================================================================
 #---------------------------------------------------------------------
 #=====================================================================
