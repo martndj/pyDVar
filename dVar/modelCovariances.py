@@ -183,6 +183,8 @@ def B_str_op(x, sig, strVec):
 #-------------------------------------------------
 
 def normBInvAdapted2(x, grid, strVec, bkgLC, bkgSig, sigAdapted):
+    strVec=strVec/grid.norm(strVec, metric=normBInv2,
+                                    metricArgs=(grid, bkgLC, bkgSig))
     (SigMat, rCTilde_sqrt)=make_BisoHomo_args(grid, bkgLC, bkgSig)
     xi1=B_sqrt_isoHomo_inv_op(x, SigMat, rCTilde_sqrt)
     xiStr=B_sqrt_isoHomo_inv_op(strVec, SigMat, rCTilde_sqrt)
