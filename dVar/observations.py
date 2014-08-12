@@ -48,7 +48,7 @@ def homoSampling(grid, nObs, xlim=None):
     coord=[]
     if xlim:
         minCoord=xlim[0]
-        maxCoorr=xlim[1]
+        maxCoord=xlim[1]
     else:
         minCoord=grid.min()
         maxCoord=grid.max()
