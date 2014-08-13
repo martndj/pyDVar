@@ -586,7 +586,7 @@ class TimeWindowObs(object):
     #------------------------------------------------------
     
     def norm(self, d_y):
-        return np.sqrt(self.prosca(d_y))
+        return np.sqrt(self.prosca(d_y, d_y))
 
     #------------------------------------------------------
 
@@ -602,7 +602,7 @@ class TimeWindowObs(object):
         d_Hx={}
         for n in xrange(len(nDtList)):
             i=nDtList[n]
-            t=self.times[n]
+            t=self.times[n+1]
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_x[i], g)
 
         return d_Hx
@@ -644,6 +644,10 @@ class TimeWindowObs(object):
 
         return adj
         
+    #------------------------------------------------------
+
+    def modelEqNorm(self, x, nlModel, t0=0.):
+        return self.norm(self.modelEquivalent(x, nlModel, t0=t0))
 
     #------------------------------------------------------
     
