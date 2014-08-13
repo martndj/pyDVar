@@ -559,7 +559,7 @@ class TimeWindowObs(object):
             
     #------------------------------------------------------
 
-    def __times2NDt(self, dt, t0=0.):
+    def _times2NDt(self, dt, t0=0.):
         nDtList=[]
         for t in self.times:
             if t > t0:
@@ -594,7 +594,7 @@ class TimeWindowObs(object):
         if self.empty:
             raise RuntimeError()
         self.__propagatorValidate(nlModel)
-        nDtList=self.__times2NDt(nlModel.dt, t0=t0)
+        nDtList=self._times2NDt(nlModel.dt, t0=t0)
         g=nlModel.grid
 
         d_x=nlModel.d_nDtInt(x, nDtList, t0=t0)
@@ -602,7 +602,7 @@ class TimeWindowObs(object):
         d_Hx={}
         for n in xrange(len(nDtList)):
             i=nDtList[n]
-            t=self.times[n+1]
+            t=self.times[n]
             d_Hx[t]=self.d_Obs[t].modelEquivalent(d_x[i], g)
 
         return d_Hx
@@ -613,7 +613,7 @@ class TimeWindowObs(object):
         if self.empty:
             raise RuntimeError()
         self.__propagatorValidate(tlm, tlm=True)
-        nDtList=self.__times2NDt(tlm.dt, t0=t0)
+        nDtList=self._times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
 
         d_x=tlm.d_nDtInt(x, nDtList, t0=t0)
@@ -631,7 +631,7 @@ class TimeWindowObs(object):
         if self.empty:
             raise RuntimeError()
         self.__propagatorValidate(tlm, tlm=True)
-        nDtList=self.__times2NDt(tlm.dt, t0=t0)
+        nDtList=self._times2NDt(tlm.dt, t0=t0)
         g=tlm.grid
 
         d_w={} 
